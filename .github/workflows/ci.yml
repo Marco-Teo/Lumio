@@ -28,12 +28,22 @@ jobs:
         ports:
           - 1025:1025
           - 8025:8025
+      redis:
+        image: redis:8.10.2
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
     env:
       NEXT_TELEMETRY_DISABLED: '1'
       # Synthetic credentials for these disposable CI services only.
       ADMIN_DATABASE_URL: postgresql://postgres:ci-admin-password-for-ephemeral-tests@127.0.0.1:5432/lumio
       MIGRATION_DATABASE_URL: postgresql://lumio_migrator:ci-migration-password-for-ephemeral-tests@127.0.0.1:5432/lumio
       DATABASE_URL: postgresql://lumio_app:ci-runtime-password-for-ephemeral-tests@127.0.0.1:5432/lumio
+      WORKER_DATABASE_URL: postgresql://lumio_worker:ci-worker-password-for-ephemeral-tests@127.0.0.1:5432/lumio
+      REDIS_URL: redis://127.0.0.1:6379
+      JOB_PAYLOAD_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
       BETTER_AUTH_SECRET: synthetic-ci-auth-secret-for-ephemeral-tests-only
       APP_URL: http://127.0.0.1:3100
       LUMIO_LOCAL_TEST: '1'

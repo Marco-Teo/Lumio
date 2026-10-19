@@ -4,6 +4,10 @@ import { authenticationEnvironment } from './environment';
 afterEach(() => vi.unstubAllEnvs());
 function localEnvironment() {
   vi.stubEnv(
+    'JOB_PAYLOAD_KEY',
+    '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+  );
+  vi.stubEnv(
     'DATABASE_URL',
     'postgresql://example:example@localhost:5432/example',
   );

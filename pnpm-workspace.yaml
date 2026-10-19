@@ -5,6 +5,7 @@ packages:
 allowBuilds:
   '@prisma/engines': true
   esbuild: true
+  msgpackr-extract: true
   prisma: true
   sharp: true
 
@@ -18,3 +19,4 @@ minimumReleaseAgeExclude:
   - '@better-auth/telemetry@1.7.11'
   - better-auth@1.7.11
   - nodemailer@10.1.7
+  - bullmq@6.3.17

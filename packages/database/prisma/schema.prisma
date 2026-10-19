@@ -102,7 +102,54 @@ model Organization {
   createdAt    DateTime @default(now())
   memberships  OrganizationMembership[]
   auditEvents  AuditEvent[]
+  invitations OrganizationInvitation[]
   @@map("organization")
+}
+
+model OrganizationInvitation {
+  id String @id @default(uuid())
+  organizationId String
+  email String
+  tokenHash String @unique
+  status String @default("pending")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  acceptedAt DateTime?
+  acceptedByUserId String?
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  outboxEvents OutboxEvent[]
+  @@index([organizationId, createdAt])
+  @@map("organization_invitation")
+}
+
+model OutboxEvent {
+  id String @id @default(uuid())
+  organizationId String?
+  invitationId String?
+  type String
+  payload Json
+  status String @default("pending")
+  attempts Int @default(0)
+  lastErrorCode String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  invitation OrganizationInvitation? @relation(fields: [invitationId], references: [id], onDelete: Restrict)
+  @@index([status, updatedAt])
+  @@map("outbox_event")
+}
+
+model PlatformAudit {
+  id String @id @default(uuid())
+  actorUserId String?
+  actorKind String @default("user")
+  organizationId String?
+  action String
+  entityId String
+  before Json?
+  after Json?
+  createdAt DateTime @default(now())
+  @@index([organizationId, createdAt])
+  @@map("platform_audit")
 }
 
 model OrganizationMembership {

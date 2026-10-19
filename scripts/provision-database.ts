@@ -3,7 +3,8 @@ import { Client } from 'pg';
 const adminUrl = process.env.ADMIN_DATABASE_URL;
 const migrationUrl = process.env.MIGRATION_DATABASE_URL;
 const runtimeUrl = process.env.DATABASE_URL;
-if (!adminUrl || !migrationUrl || !runtimeUrl)
+const workerUrl = process.env.WORKER_DATABASE_URL;
+if (!adminUrl || !migrationUrl || !runtimeUrl || !workerUrl)
   throw new Error('Database provisioning environment is missing');
 
 const adminConnection = new URL(adminUrl);
@@ -22,6 +23,7 @@ try {
     for (const [name, url] of [
       ['lumio_migrator', migrationUrl],
       ['lumio_app', runtimeUrl],
+      ['lumio_worker', workerUrl],
     ] as const) {
       const parsed = new URL(url);
       if (parsed.username !== name) throw new Error('Unexpected database role');
@@ -44,8 +46,9 @@ try {
       );
     }
     await provisioner.query(
-      'GRANT CONNECT ON DATABASE lumio TO lumio_app, lumio_migrator',
+      'GRANT CONNECT ON DATABASE lumio TO lumio_app, lumio_migrator, lumio_worker',
     );
+    await provisioner.query("ALTER DATABASE lumio SET timezone TO 'UTC'");
     await provisioner.query('ALTER SCHEMA public OWNER TO lumio_migrator');
     await provisioner.query('REVOKE CREATE ON SCHEMA public FROM PUBLIC');
     await provisioner.query(

@@ -10,6 +10,7 @@ export function createDatabase(connectionString: string) {
       connectionString,
       max: 5,
       connectionTimeoutMillis: 3000,
+      options: '-c timezone=UTC',
     }),
   });
 }

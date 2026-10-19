@@ -3,6 +3,7 @@ import { z } from 'zod';
 const schema = z.object({
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
   BETTER_AUTH_SECRET: z.string().min(32),
+  JOB_PAYLOAD_KEY: z.string().regex(/^[a-f0-9]{64}$/i),
   APP_URL: z.url({ protocol: /^https?$/ }),
   MAIL_TRANSPORT: z.enum(['smtp', 'ses']).default('smtp'),
   SMTP_HOST: z.string().default('127.0.0.1'),
