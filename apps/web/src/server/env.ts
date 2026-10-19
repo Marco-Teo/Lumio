@@ -1,9 +1,7 @@
 import { z } from 'zod';
 
 const environmentSchema = z.object({
-  APP_URL: z
-    .url({ protocol: /^https?$/ })
-    .default('http://localhost:3000'),
+  APP_URL: z.url({ protocol: /^https?$/ }).default('http://localhost:3000'),
 });
 
 export function parseEnvironment(input: Record<string, string | undefined>) {

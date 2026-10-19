@@ -1,7 +1,5 @@
 packages:
   - apps/*
 
-onlyBuiltDependencies:
-  - sharp
-  - esbuild
-  - unrs-resolver
+allowBuilds:
+  sharp: true
