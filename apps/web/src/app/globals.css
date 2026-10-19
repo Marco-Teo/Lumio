@@ -95,3 +95,49 @@ section {
   display: block;
   overflow-wrap: anywhere;
 }
+
+.platform {
+  max-width: 80rem;
+  justify-content: flex-start;
+}
+.platform h1 {
+  font-size: clamp(2rem, 6vw, 3rem);
+}
+.platform section {
+  width: 100%;
+  margin: 1rem 0;
+}
+.table-scroll {
+  overflow-x: auto;
+  width: 100%;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th,
+td {
+  padding: 0.8rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid #ced4d3;
+}
+td button {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+textarea {
+  font: inherit;
+  min-height: 6rem;
+  padding: 0.75rem;
+}
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

@@ -18,13 +18,21 @@ export function AuthForm({
     const fields = new FormData(event.currentTarget);
     const email = String(fields.get('email') ?? '');
     const password = String(fields.get('password') ?? '');
+    const requestedReturn = new URLSearchParams(window.location.search).get(
+      'returnTo',
+    );
+    const destination =
+      requestedReturn &&
+      ['/account', '/platform', '/invitations'].includes(requestedReturn)
+        ? requestedReturn
+        : '/account';
     try {
       if (mode === 'register') {
         const result = await authClient.signUp.email({
           email,
           password,
           name: String(fields.get('name')),
-          callbackURL: '/login',
+          callbackURL: `/login?returnTo=${encodeURIComponent(destination)}`,
         });
         setMessage(
           result.error
@@ -40,8 +48,10 @@ export function AuthForm({
             result.data &&
               'twoFactorRedirect' in result.data &&
               result.data.twoFactorRedirect
-              ? '/two-factor'
-              : '/account',
+              ? destination === '/account'
+                ? '/two-factor'
+                : `/two-factor?returnTo=${encodeURIComponent(destination)}`
+              : destination,
           );
       } else if (mode === 'forgot') {
         await authClient.requestPasswordReset({
@@ -67,7 +77,7 @@ export function AuthForm({
           ? await authClient.twoFactor.verifyBackupCode({ code })
           : await authClient.twoFactor.verifyTotp({ code });
         if (result.error) setMessage('Codice non valido o scaduto.');
-        else window.location.assign('/account');
+        else window.location.assign(destination);
       }
     } catch {
       setMessage('Servizio non disponibile. Riprova tra poco.');
