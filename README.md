@@ -4,6 +4,8 @@ Piattaforma per concorsi fotografici. Stato: **F0.3 — provisioning e inviti as
 
 ## Implementato
 
+Il [registro di avanzamento](CHANGELOG.md) riepiloga le fasi completate, le verifiche locali e le funzionalità ancora pianificate.
+
 Homepage, registrazione, verifica email, login/logout, recupero password con revoca sessioni, MFA TOTP e codici di recupero. PostgreSQL, Prisma, organizzazioni sintetiche e isolamento RLS. Console Lumio per provisioning, inviti amministrativi asincroni, sospensione/riattivazione e audit. Nessuna funzionalità di concorso.
 
 ## Requisiti e avvio da clone pulito
