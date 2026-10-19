@@ -11,6 +11,7 @@ export function AccountControls({
   const [uri, setUri] = useState('');
   const [codes, setCodes] = useState<string[]>([]);
   const [message, setMessage] = useState('');
+  const [enabled, setEnabled] = useState(twoFactorEnabled);
   async function enable(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
@@ -37,6 +38,7 @@ export function AccountControls({
       if (result.error) setMessage('Codice non valido.');
       else {
         setUri('');
+        setEnabled(true);
         setMessage(
           'Autenticazione a due fattori attivata. Conserva i codici di recupero.',
         );
@@ -48,7 +50,7 @@ export function AccountControls({
   return (
     <section aria-label="Sicurezza account">
       <h2>Sicurezza</h2>
-      {twoFactorEnabled ? (
+      {enabled ? (
         <p>Autenticazione a due fattori attiva.</p>
       ) : (
         <form onSubmit={enable}>
@@ -96,8 +98,16 @@ export function AccountControls({
       <p role="status">{message}</p>
       <button
         onClick={async () => {
-          await authClient.signOut();
-          window.location.assign('/login');
+          try {
+            const result = await authClient.signOut();
+            if (result.error) {
+              setMessage('Uscita non riuscita. Riprova tra poco.');
+              return;
+            }
+            window.location.assign('/login');
+          } catch {
+            setMessage('Servizio non disponibile. Riprova tra poco.');
+          }
         }}
       >
         Esci
