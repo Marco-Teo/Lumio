@@ -1,5 +1,20 @@
 packages:
   - apps/*
+  - packages/*
 
 allowBuilds:
+  '@prisma/engines': true
+  esbuild: true
+  prisma: true
   sharp: true
+
+minimumReleaseAgeExclude:
+  - '@better-auth/core@1.7.11'
+  - '@better-auth/drizzle-adapter@1.7.11'
+  - '@better-auth/kysely-adapter@1.7.11'
+  - '@better-auth/memory-adapter@1.7.11'
+  - '@better-auth/mongo-adapter@1.7.11'
+  - '@better-auth/prisma-adapter@1.7.11'
+  - '@better-auth/telemetry@1.7.11'
+  - better-auth@1.7.11
+  - nodemailer@10.1.7
