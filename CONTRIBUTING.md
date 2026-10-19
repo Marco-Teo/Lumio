@@ -2,7 +2,7 @@
 
 Usare Node 24.22.0 e pnpm 12.14.0. Seguire il [README](README.md) per ambiente locale, Docker e migrazioni.
 
-Prima del commit: pnpm lint, pnpm format:check, pnpm typecheck, pnpm test, pnpm test:integration, pnpm test:e2e e pnpm build. Test integrazione ed E2E richiedono PostgreSQL/Mailpit e dati sintetici. Non puntarli a produzione.
+Prima del commit: pnpm lint, pnpm format:check, pnpm typecheck, pnpm test, pnpm test:integration, pnpm test:e2e e pnpm build. Test integrazione ed E2E richiedono PostgreSQL/Redis/Mailpit e dati sintetici. Non puntarli a produzione.
 
 TypeScript strict; nessun any ingiustificato. Dipendenze dirette con versione esatta, lockfile aggiornato e peer dependency compatibili. pnpm format applica lo stile, format:check non modifica file.
 
@@ -12,8 +12,10 @@ I moduli tenant devono usare il client transazionale ricevuto da withOrganizatio
 
 next-env.d.ts è generato da Next.js e ignorato da Git: dev e build producono riferimenti diversi ai tipi generati. Il comando typecheck esegue prima next typegen anche su clone pulito.
 
-Conservare separati account, persona e membership. Non aggiungere package senza confini reali; packages/database è l'unico package attuale. Non modificare manualmente i file generati Next.js; AGENTS.md contiene le istruzioni prodotte dal framework.
+Conservare separati account, persona e membership. Non aggiungere package senza confini reali; packages/database e packages/jobs sono i due package attuali, consumati realmente da web e worker. Non modificare manualmente i file generati Next.js; AGENTS.md contiene le istruzioni prodotte dal framework.
 
 Configurare nome/email autore solo nel repository. Nessun segreto, file ambiente reale, dump o log sensibile tracciato. Non condividere token in chat. I commit locali non pubblicano nulla su GitHub.
 
-F0.2 termina con identità e isolamento verificati. Console di provisioning, inviti, worker, Redis e concorsi richiedono milestone successive. Documentare sempre separatamente quanto è operativo, verificato localmente o soltanto predisposto.
+F0.3 termina con console, inviti e worker verificati. Concorsi, immagini, pagamenti e giuria richiedono milestone successive. Documentare sempre separatamente quanto è operativo, verificato localmente o soltanto predisposto.
+
+I test di integrazione ed E2E sull'outbox devono essere sequenziali, senza worker locale parallelo. Usare solo identità sintetiche e pulire i record del test con identificatori noti. Non attribuire privilegi piattaforma ad account reali dai seed. Il comando platform:grant-admin richiede sempre un'email verificata esplicita e produce audit.

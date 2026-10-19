@@ -18,4 +18,12 @@ Test reali con due organizzazioni: letture e scritture incrociate, identificator
 
 Solo filtri applicativi sono insufficienti come unica difesa. Schema per tenant complica le migrazioni; database per tenant aumenta costi e gestione. Schema condiviso con RLS resta la scelta iniziale.
 
-L'isolamento di fotografie, export e job sarà aggiunto con quei moduli. Non è ancora disponibile la console piattaforma e non vengono esposte anagrafiche globali agli organizzatori.
+L'isolamento di fotografie, export e job sarà aggiunto con quei moduli. La console piattaforma è ora disponibile con policy separate; non vengono esposte anagrafiche globali agli organizzatori.
+
+## Confini della piattaforma e del worker
+
+Solo il Super Admin con email verificata e MFA vede l'elenco trasversale delle organizzazioni tramite policy dedicate. La normale area tenant continua a richiedere membership esplicita anche per un utente con altri incarichi. La console non introduce BYPASSRLS o credenziali proprietarie nel web.
+
+La membership viene creata dalla capability di accettazione esclusivamente per il destinatario verificato e il tenant dell'invito. Sospensione e accettazione sono serializzate sul record organizzazione; un tenant sospeso è rifiutato da withOrganization.
+
+L'outbox è un piano operativo trasversale, accessibile solo alla piattaforma autorizzata, al migrator e al worker dedicato. Il worker imposta un tenant per transazione prima di leggere invito e organizzazione. Non dispone di accesso alle anagrafiche o alle credenziali.

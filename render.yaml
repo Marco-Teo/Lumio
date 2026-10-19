@@ -22,6 +22,8 @@ services:
         sync: false
       - key: BETTER_AUTH_SECRET
         generateValue: true
+      - key: JOB_PAYLOAD_KEY
+        sync: false
       - key: MAIL_TRANSPORT
         value: ses
       - key: AWS_REGION
@@ -32,6 +34,48 @@ services:
         sync: false
       - key: AWS_SECRET_ACCESS_KEY
         sync: false
+  - type: worker
+    name: lumio-worker-staging
+    runtime: node
+    region: frankfurt
+    plan: 0.5c-512mb
+    numInstances: 1
+    autoDeployTrigger: off
+    buildCommand: npm install --global pnpm@12.14.0 && pnpm install --frozen-lockfile && pnpm db:generate
+    startCommand: pnpm worker
+    envVars:
+      - key: NODE_VERSION
+        value: 24.22.0
+      - key: NODE_ENV
+        value: production
+      - key: WORKER_DATABASE_URL
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: JOB_PAYLOAD_KEY
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: lumio-queue-staging
+          property: connectionString
+      - key: MAIL_TRANSPORT
+        value: ses
+      - key: AWS_REGION
+        value: eu-central-1
+      - key: EMAIL_FROM
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+  - type: keyvalue
+    name: lumio-queue-staging
+    region: frankfurt
+    plan: 256mb
+    maxmemoryPolicy: noeviction
+    persistenceMode: journal-snapshot
+    ipAllowList: []
 databases:
   - name: lumio-db-staging
     databaseName: lumio

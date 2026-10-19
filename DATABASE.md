@@ -13,13 +13,23 @@ AuditEvent collega attore, membership e organizzazione. Una FK composita impedis
 ## Migrazioni e ruoli
 
 - lumio_migrator: proprietario dello schema e delle tabelle, usato soltanto dai comandi operativi.
-- lumio_app: runtime senza superuser, BYPASSRLS, proprietà delle tabelle o permessi di provisioning.
+- lumio_app: runtime senza superuser, BYPASSRLS, proprietà delle tabelle o facoltà di assegnare privilegi piattaforma. Il provisioning organizzativo passa da policy specifiche per Super Admin autenticati con MFA.
 - ADMIN_DATABASE_URL: solo per bootstrap locale e test con database temporanei.
 
-pnpm db:provision crea i ruoli e assegna lo schema al migrator; richiede privilegi amministrativi. pnpm db:migrate applica tre migrazioni: tabelle foundation, privilegi/RLS/trigger e vincolo di membership sulle letture tenant. Le policy e i vincoli SQL aggiuntivi sono mantenuti esplicitamente nelle migrazioni, non da db push.
+pnpm db:provision crea i ruoli e assegna lo schema al migrator; richiede privilegi amministrativi. pnpm db:migrate applica quattro migrazioni: foundation, privilegi/RLS/trigger, guardia membership e provisioning con outbox/inviti/audit piattaforma. Le policy e i vincoli SQL aggiuntivi sono mantenuti esplicitamente nelle migrazioni, non da db push.
 
 Il seed è ripetibile, vietato in NODE_ENV=production e privo di password demo. Il test di migrazione prova l'intera sequenza da database vuoto e rimuove solo il database temporaneo generato dal test.
 
 ## Pianificato
 
-Contest, Edition, Section, Registration e relativo snapshot, Entry, Photo, PhotoRevision, MediaAsset, pagamenti e giuria. Nessuna tabella di concorso viene anticipata in F0.2. Backup e restore gestiti saranno verificati prima del pilota remoto.
+Contest, Edition, Section, Registration e relativo snapshot, Entry, Photo, PhotoRevision, MediaAsset, pagamenti e giuria. Nessuna tabella di concorso viene anticipata nella foundation. Backup e restore gestiti saranno verificati prima del pilota remoto.
+
+## Aggiunte F0.3
+
+OrganizationInvitation conserva email normalizzata, hash token, stato pending/accepted/revoked e scadenza. L'indice parziale consente un solo invito pending per organizzazione/email. OutboxEvent ha stati pending/queued/completed/failed/cancelled e vincoli compositi verso l'invito dello stesso tenant. PlatformAudit registra separatamente le operazioni Lumio, inclusi il grant CLI e accettazioni che non hanno ancora una membership.
+
+lumio_worker è un terzo ruolo runtime senza BYPASSRLS: può leggere e aggiornare l'outbox e leggere soltanto organizzazione/invito nel contesto del job. Non può leggere user/account/session/platform_role né creare organizzazioni. Nessuna credenziale migrator viene usata dal worker.
+
+is_platform_admin è una funzione SECURITY DEFINER con search_path fissato, senza EXECUTE pubblico, che verifica ruolo, email verificata e MFA dall'utente corrente. Le policy piattaforma sono separate da quelle tenant. accept_organization_invitation è una capability stretta: verifica destinatario/scadenza/stato, blocca organizzazione e invito, crea al massimo una membership, marca il token usato e registra audit nella stessa transazione. Il runtime non ottiene INSERT diretto sulle membership.
+
+Le connessioni Prisma e il database locale usano timezone UTC. Il contesto transazionale resta una responsabilità del backend fidato e non protegge da un operatore che possieda le credenziali runtime e possa eseguire SQL arbitrario.

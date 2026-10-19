@@ -1,58 +1,9 @@
-import { expect, test, type APIRequestContext } from '@playwright/test';
-import { randomBytes, createHmac } from 'node:crypto';
+import { expect, test } from '@playwright/test';
+import { randomBytes } from 'node:crypto';
 import { createDatabase } from '@lumio/database';
 
+import { emailLink, totp } from './helpers';
 const origin = 'http://127.0.0.1:3100';
-const mailpit = process.env.MAILPIT_URL ?? 'http://127.0.0.1:8025';
-
-async function emailLink(
-  request: APIRequestContext,
-  email: string,
-  kind: 'verify-email' | 'reset-password',
-) {
-  let link = '';
-  await expect
-    .poll(async () => {
-      const search = await request.get(`${mailpit}/api/v1/search`, {
-        params: { query: `to:${email}` },
-      });
-      const data = (await search.json()) as { messages: Array<{ ID: string }> };
-      for (const item of data.messages) {
-        const message = (await (
-          await request.get(`${mailpit}/api/v1/message/${item.ID}`)
-        ).json()) as { Text: string };
-        const found = message.Text.match(/https?:\/\/[^\s]+/g)?.find((url) =>
-          url.includes(kind),
-        );
-        if (found) {
-          link = found;
-          return true;
-        }
-      }
-      return false;
-    })
-    .toBe(true);
-  return link;
-}
-
-function totp(uri: string) {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  const secret = new URL(uri).searchParams.get('secret') ?? '';
-  const bits = [...secret.toUpperCase()]
-    .map((char) => alphabet.indexOf(char).toString(2).padStart(5, '0'))
-    .join('');
-  const key = Buffer.from(
-    (bits.match(/.{8}/g) ?? []).map((byte) => parseInt(byte, 2)),
-  );
-  const counter = Buffer.alloc(8);
-  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
-  const digest = createHmac('sha1', key).update(counter).digest();
-  const offset = digest[digest.length - 1] & 15;
-  return ((digest.readUInt32BE(offset) & 0x7fffffff) % 1000000)
-    .toString()
-    .padStart(6, '0');
-}
-
 test('registration, verification, reset, revocation and MFA', async ({
   page,
   request,
