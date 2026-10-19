@@ -1,22 +1,21 @@
 # Multi-tenancy
 
-## Implementato in F0.1
+## Implementato
 
-Nessuna organizzazione, membership, tabella tenant o policy RLS. La pagina pubblica è priva di dati tenant. Non è ancora possibile verificare l'isolamento tra organizzazioni.
+Database e schema condivisi. Organizzazione come tenant, organizationId sulle relazioni tenant, RLS abilitata e forzata. Account globali; Person accessibile solo al proprio userId attraverso contesto server validato.
 
-## Decisione approvata, da implementare in F0.2
+withOrganization riceve l'identità dalla sessione server, apre una transazione e imposta app.user_id e app.organization_id con set_config locale. Verifica membership e stato dell'organizzazione. Non esiste tenant di fallback.
 
-Database e schema PostgreSQL condivisi, `organization_id` sulle entità tenant e Row Level Security come difesa aggiuntiva all'autorizzazione applicativa.
+Le policy organizzazione e audit verificano anche la membership dell'identità corrente; il solo organizationId non dà accesso. Le membership visibili al runtime sono limitate al proprio utente nel tenant corrente. Il migrator dispone di policy separate per provisioning fidato. Il ruolo HTTP non può assegnare membership o privilegi piattaforma.
 
-- Contesto organizzativo validato dal server e locale alla transazione.
-- Nessun tenant di fallback e nessun contesto persistente sulla connessione riutilizzata.
-- Ruolo runtime non proprietario delle tabelle e senza `BYPASSRLS`.
-- Policy forzate e foreign key composite per le relazioni tenant.
-- Account globale riutilizzabile; gli organizzatori vedono solo dati conferiti alle proprie iscrizioni.
-- Privilegi piattaforma distinti dai ruoli organizzativi.
+Le tabelle auth globali sono riservate al backend Better Auth e non esposte mediante API generiche. RLS protegge i dati tenant; non sostituisce le verifiche di sessione, ownership e MFA. Il contesto PostgreSQL è impostabile dal backend fidato: non costituisce una sandbox per chi dispone delle credenziali runtime o può eseguire SQL arbitrario.
 
-## Alternative considerate
+## Verifiche
 
-Solo filtri applicativi: semplici, ma insufficienti come unica difesa. Schema per tenant: migrazioni più complesse. Database per tenant: maggiore separazione operativa, costi e manutenzione superiori. La soluzione condivisa con RLS è il compromesso iniziale scelto.
+Test reali con due organizzazioni: letture e scritture incrociate, identificatore tenant senza membership, persona estranea, FK composite, contesto assente, riuso delle connessioni dopo successo/rollback, ruoli database e sospensione applicativa.
 
-I test di F0.2 dovranno dimostrare isolamento in lettura, scrittura e relazioni, rifiuto del contesto assente e assenza di contaminazione tra connessioni riutilizzate.
+## Alternative e futuro
+
+Solo filtri applicativi sono insufficienti come unica difesa. Schema per tenant complica le migrazioni; database per tenant aumenta costi e gestione. Schema condiviso con RLS resta la scelta iniziale.
+
+L'isolamento di fotografie, export e job sarà aggiunto con quei moduli. Non è ancora disponibile la console piattaforma e non vengono esposte anagrafiche globali agli organizzatori.

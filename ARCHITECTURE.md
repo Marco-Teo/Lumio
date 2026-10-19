@@ -1,30 +1,19 @@
 # Architettura
 
-## Implementato in F0.1
+## Implementato in F0.2
 
-Un repository pnpm con una sola applicazione Next.js App Router in `apps/web`. React rende una pagina statica in italiano; un Route Handler espone il contratto HTTP pubblico `GET /api/health/live` → `200 {"status":"ok"}`.
+Monorepo pnpm con apps/web (Next.js App Router, React, TypeScript strict) e un solo package condiviso, packages/database. Il confine database esiste perché schema e client sono consumati dal web, dalle migrazioni e dai comandi operativi.
 
-TypeScript strict copre applicazione, test e configurazioni TypeScript. Zod valida `APP_URL` durante il caricamento della configurazione Next.js. Non sono presenti servizi applicativi di dominio o package condivisi.
+Moduli server del web: auth (Better Auth), authorization, tenancy e adapter email. Interfaccia minimale con CSS e font di sistema. Nessun package UI, contracts o config.
 
-La UI usa CSS e font di sistema: nessuna libreria visuale, font remoto, logo o brand identity definitiva.
+Prisma **7.10.1** con adapter PostgreSQL: si evita la release candidata indicata dal tag latest della CLI. Il client è generato prima di dev, build e typecheck, non tracciato. TypeScript **6.0.3** resta compatibile con il parser di lint. Nessun any applicativo.
 
-ESLint usa le regole raccomandate JavaScript/TypeScript e vieta `any` esplicito. Non si usa il preset Next.js completo: i suoi plugin React/import dichiarano incompatibilità con ESLint 10. TypeScript 6.0.3 è la release stabile compatibile con il parser di lint scelto. Non vengono forzate peer dependency incompatibili.
+Auth usa sessioni persistenti senza cookie cache. La persona distinta dall'account viene creata da trigger transazionale quando nasce un utente. Le email identità usano SMTP locale oppure adapter SES; non è presente una queue. Gli inviti asincroni appartengono a F0.3.
 
-## Pianificato, non implementato
+withOrganization imposta utente e organizzazione in una transazione, verifica membership e stato active, e passa il solo client transazionale al caso d'uso. L'endpoint organizzazione richiede anche MFA; non espone un elenco globale.
 
-- F0.2: identità, PostgreSQL, migrazioni, organizzazioni e isolamento RLS.
-- F0.3: console di provisioning Lumio, inviti, worker, coda e outbox.
-- Milestone successive: concorsi, edizioni, iscrizioni, opere, upload e giuria.
+## Decisioni pianificate
 
-Architettura di destinazione: monolite modulare con worker separato. I package verranno estratti solo con un confine reale; database per web/comandi operativi e jobs per produttore/worker.
+F0.3 aggiungerà console piattaforma, inviti, worker, outbox e package jobs quando esisteranno produttore e consumatore reali. Il rate limiting attuale è in memoria e il deployment è limitato a una replica; prima di scalare occorre uno store condiviso.
 
-## Invarianti approvate per il futuro
-
-- Account utente, persona, iscrizione, opera e fotografia restano entità distinte.
-- Organizzazione → concorsi permanenti → edizioni → sezioni configurabili.
-- Account e profilo globali; copie dei dati nelle singole iscrizioni.
-- Originali immutabili e revisioni fotografiche separate dai derivati.
-- Pipeline asincrona con retry, idempotenza e outbox.
-- Accesso giuria solo a copie anonime; export amministrativi separati.
-
-Queste sono decisioni di progetto, non funzionalità disponibili in F0.1.
+Restano invarianti approvate ma non implementate: Account != Persona != Iscrizione != Opera != Fotografia; concorso permanente con più edizioni; dati iscrizione locali; originali immutabili; revisioni fotografiche; pipeline asincrona idempotente; anonimizzazione ed export giuria separato da quello amministrativo.

@@ -1,75 +1,65 @@
 # Lumio
 
-Piattaforma per la gestione di concorsi fotografici. Stato: **F0.1 — foundation web**.
+Piattaforma per concorsi fotografici. Stato: **F0.2 — identità e isolamento organizzativo**.
 
-Implementato: pagina iniziale neutra, validazione ambiente, liveness, tooling e test automatici. Database, autenticazione, organizzazioni, console, worker e funzionalità di concorso sono pianificati e non sono presenti.
+## Implementato
 
-## Requisiti
+Homepage, registrazione, verifica email, login/logout, recupero password con revoca sessioni, MFA TOTP e codici di recupero. PostgreSQL, Prisma, organizzazioni sintetiche e isolamento RLS. Nessuna console di provisioning o funzionalità di concorso.
 
-- Git.
-- Node.js **24.22.0**, fissato anche in `.nvmrc` e `engines`.
-- pnpm **12.14.0**, fissato in `packageManager` e `engines`.
+## Requisiti e avvio da clone pulito
 
-Con Node installato, installare la versione richiesta di pnpm se non disponibile:
+Git, Node **24.22.0**, pnpm **12.14.0**, Docker con Compose.
 
 ```sh
 npm install --global pnpm@12.14.0
-```
-
-## Avvio da clone pulito
-
-Dalla directory di un clone del repository:
-
-```sh
 pnpm install --frozen-lockfile
+pnpm env:local
+docker compose up -d
+pnpm db:generate
+pnpm db:provision
+pnpm db:migrate
+pnpm db:seed
 pnpm dev
 ```
 
-Aprire <http://127.0.0.1:3000>. Nessuna configurazione esterna è necessaria.
+Aprire http://127.0.0.1:3000. Le email di sviluppo sono consultabili su http://127.0.0.1:8025 (Mailpit); non vengono inviate a destinatari reali. Usare 127.0.0.1 anche nel browser, coerentemente con APP_URL.
 
-`GET /api/health/live` restituisce HTTP 200 e `{"status":"ok"}`. È una verifica di vitalità del processo, non di dipendenze esterne.
+env:local genera credenziali casuali, senza mostrarle, in .env e apps/web/.env.local; rifiuta di sovrascrivere file esistenti. La configurazione web contiene solo le credenziali runtime. .env.example contiene esclusivamente esempi. Non copiarlo come configurazione funzionante.
 
-## Ambiente
-
-`APP_URL` è una variabile server-only opzionale, con default `http://localhost:3000`. Deve essere un URL HTTP o HTTPS valido. Viene validata al caricamento della configurazione Next.js, anche durante la build; un valore invalido impedisce l'avvio senza riportarne il contenuto nell'errore.
-
-Per personalizzarla, copiare `.env.example` in `apps/web/.env.local`, oppure impostarla nell'ambiente della shell. Next.js carica i file ambiente dalla directory dell'applicazione. Non usare variabili `NEXT_PUBLIC_` per valori riservati.
+Il seed è idempotente: due organizzazioni e due identità sintetiche senza password. Non crea account demo accessibili. Registrare il proprio account dalla UI e usare Mailpit per verificarlo. L'assegnazione amministrativa via console appartiene a F0.3.
 
 ## Verifiche
+
+Con PostgreSQL e Mailpit avviati e database migrato:
 
 ```sh
 pnpm lint
 pnpm format:check
 pnpm typecheck
 pnpm test
+pnpm test:integration
 pnpm exec playwright install chromium
 pnpm test:e2e
 pnpm build
 ```
 
-Su Linux, per installare anche le dipendenze di sistema del browser, usare `pnpm exec playwright install --with-deps chromium`.
+Su Linux usare playwright install --with-deps chromium. Gli E2E generano una build e avviano/arrestano il server sulla porta 3100. La porta deve essere libera. Le credenziali provvisorie CI sono sintetiche e valide soltanto nei servizi effimeri.
 
-`test:e2e` genera la build di produzione e avvia/arresta automaticamente il server sulla porta 3100. La porta deve essere libera. Non occorre eseguire `pnpm dev` per i test.
+Il test migrazioni crea ed elimina un database temporaneo con prefisso lumio_verify_; richiede ADMIN_DATABASE_URL e non deve essere eseguito contro produzione. Gli altri test usano il seed e account sintetici.
 
-`pnpm format` applica la formattazione. `pnpm start` avvia la build già generata sulla porta 3000. Il server locale ascolta solo su loopback.
+pnpm start avvia la build locale; pnpm format corregge lo stile. pnpm db:migrate applica le migrazioni versionate e non genera modifiche automatiche allo schema.
 
-## Struttura
+## Endpoint
 
-```text
-apps/web/                 Applicazione Next.js e test unitari dell'ambiente
-tests/e2e/                Smoke test browser e HTTP
-.github/workflows/ci.yml  Controlli automatici
-```
+- GET /api/health/live: HTTP 200, {"status":"ok"}.
+- GET /api/health/ready: 200 quando PostgreSQL risponde, altrimenti 503 senza dettagli di connessione.
+- /api/auth/*: flussi Better Auth.
+- GET /api/v1/organizations/:id: dati minimi della propria organizzazione, sessione verificata e MFA amministrativa obbligatorie.
 
-Non sono presenti package condivisi. Il lockfile fissa le dipendenze; le installazioni CI usano `--frozen-lockfile`.
+## Struttura e documentazione
 
-## Documentazione
+apps/web contiene UI e moduli server. packages/database possiede schema, migrazioni e client condiviso da web e CLI. scripts contiene setup e seed; tests separa unit, integrazione ed E2E.
 
-- [Architettura](ARCHITECTURE.md)
-- [Database](DATABASE.md)
-- [Sicurezza](SECURITY.md)
-- [Multi-tenancy](MULTITENANCY.md)
-- [Deployment](DEPLOYMENT.md)
-- [Contribuire](CONTRIBUTING.md)
+[Architettura](ARCHITECTURE.md) · [Database](DATABASE.md) · [Sicurezza](SECURITY.md) · [Tenancy](MULTITENANCY.md) · [Deployment](DEPLOYMENT.md) · [Contribuire](CONTRIBUTING.md).
 
-F0.2 e F0.3 richiedono un passaggio successivo esplicito. Nessuna risorsa cloud viene creata da questo repository.
+F0.3, worker e concorsi non sono implementati. Nessuna infrastruttura cloud è stata attivata.

@@ -1,17 +1,25 @@
 # Database
 
-## Implementato in F0.1
+## Implementato
 
-Nessun database, ORM, schema, migrazione, connessione o seed. L'applicazione non persiste dati. Non è richiesto Docker.
+PostgreSQL **18.6** locale/CI e Prisma **7.10.1**. Tabelle auth: user, session, account, verification, twoFactor. Tabelle foundation: person, organization, organization_membership, platform_role, audit_event.
 
-## Pianificato da F0.2
+User e Person sono distinti: userId della persona è opzionale e univoco; un trigger crea la persona dell'account nuovo nella stessa transazione. I giurati e i partecipanti di concorso non sono ancora modellati.
 
-PostgreSQL e Prisma con migrazioni versionate; ruoli separati per migrazioni e runtime. Modello iniziale limitato a identità, organizzazioni, membership, privilegi piattaforma e audit.
+Organization ha nome, slug univoco, contatto e stato active/suspended. Le membership foundation hanno ruolo admin; non esiste un ruolo fisso su User. PlatformRole è distinto, limitato a super_admin e non assegnabile dal runtime.
 
-Il tenant sarà l'organizzazione. Le tabelle tenant avranno `organization_id`, RLS e vincoli che impediscano collegamenti tra organizzazioni. Gli account e i profili globali avranno regole di accesso dedicate.
+AuditEvent collega attore, membership e organizzazione. Una FK composita impedisce riferimenti a membership di altri tenant. Il runtime può aggiungere eventi validi, ma non modificarli o cancellarli. Non è ancora implementato un catalogo completo di eventi business.
 
-## Pianificato nelle milestone di dominio
+## Migrazioni e ruoli
 
-Entità distinte: User, Person, Registration, Entry, Photo, PhotoRevision e MediaAsset. Contest rappresenterà il concorso permanente; Edition la singola edizione. Gli aggiornamenti del profilo globale non riscriveranno le iscrizioni storiche.
+- lumio_migrator: proprietario dello schema e delle tabelle, usato soltanto dai comandi operativi.
+- lumio_app: runtime senza superuser, BYPASSRLS, proprietà delle tabelle o permessi di provisioning.
+- ADMIN_DATABASE_URL: solo per bootstrap locale e test con database temporanei.
 
-Regole fotografiche e documenti saranno versionati. Importi in unità monetarie minime intere, valuta esplicita, timestamp UTC e timezone dell'edizione. Foreign key, indici e transazioni saranno definiti insieme ai casi d'uso effettivi.
+pnpm db:provision crea i ruoli e assegna lo schema al migrator; richiede privilegi amministrativi. pnpm db:migrate applica tre migrazioni: tabelle foundation, privilegi/RLS/trigger e vincolo di membership sulle letture tenant. Le policy e i vincoli SQL aggiuntivi sono mantenuti esplicitamente nelle migrazioni, non da db push.
+
+Il seed è ripetibile, vietato in NODE_ENV=production e privo di password demo. Il test di migrazione prova l'intera sequenza da database vuoto e rimuove solo il database temporaneo generato dal test.
+
+## Pianificato
+
+Contest, Edition, Section, Registration e relativo snapshot, Entry, Photo, PhotoRevision, MediaAsset, pagamenti e giuria. Nessuna tabella di concorso viene anticipata in F0.2. Backup e restore gestiti saranno verificati prima del pilota remoto.

@@ -1,0 +1,41 @@
+# Prepared staging blueprint only. Applying it creates paid resources.
+# Provision database roles/migrations separately before enabling the web service.
+services:
+  - type: web
+    name: lumio-web-staging
+    runtime: node
+    region: frankfurt
+    plan: 0.5c-512mb
+    numInstances: 1
+    autoDeployTrigger: off
+    buildCommand: npm install --global pnpm@12.14.0 && pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm start:hosted
+    healthCheckPath: /api/health/ready
+    envVars:
+      - key: NODE_VERSION
+        value: 24.22.0
+      - key: NEXT_TELEMETRY_DISABLED
+        value: '1'
+      - key: DATABASE_URL
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: MAIL_TRANSPORT
+        value: ses
+      - key: AWS_REGION
+        value: eu-central-1
+      - key: EMAIL_FROM
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+databases:
+  - name: lumio-db-staging
+    databaseName: lumio
+    region: frankfurt
+    plan: 0.5c-1g
+    postgresMajorVersion: '18'
+    ipAllowList: []

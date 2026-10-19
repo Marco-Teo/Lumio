@@ -1,25 +1,28 @@
 # Deployment
 
-## Implementato in F0.1
+## Implementato e verificato localmente
 
-Esecuzione locale e CI. Non esistono ambienti cloud, configurazioni Render, container, risorse Terraform o pipeline di pubblicazione.
+Docker Compose definisce PostgreSQL 18.6 e Mailpit 1.31.6 su loopback, con volume database persistente. Le credenziali sono generate da pnpm env:local. Sul PC di sviluppo privo di Docker i test sono stati eseguiti con binari portabili delle stesse versioni; questi strumenti sono esclusi da Git in .tools.
 
-```sh
-pnpm install --frozen-lockfile
-pnpm build
-pnpm start
-```
+pnpm dev ascolta su 127.0.0.1:3000. Per build locale usare pnpm build e pnpm start. Liveness verifica HTTP; readiness interroga PostgreSQL e restituisce 503 senza dettagli se indisponibile.
 
-Il server ascolta su `127.0.0.1:3000`. `GET /api/health/live` controlla soltanto la vitalità HTTP; nessuna readiness per servizi esterni è implementata.
+La CI avvia servizi PostgreSQL/Mailpit effimeri, prepara ruoli e migrazioni, carica il seed e verifica lint, formatting, typecheck, unit, integrazione, E2E e build. Le credenziali dichiarate nel workflow sono esempi sintetici per quei container. La pipeline GitHub-hosted non è stata eseguita senza pubblicazione del repository.
 
-La CI esegue installazione frozen, lint, formatting check, typecheck, unit test, installazione Chromium, E2E e build. Gli E2E costruiscono e avviano un server di produzione isolato sulla porta 3100, arrestato da Playwright. L'esecuzione GitHub-hosted avverrà quando il repository sarà pubblicato; il bootstrap non esegue push.
+## Staging predisposto, non attivato
 
-`NEXT_TELEMETRY_DISABLED=1` disabilita la telemetria Next.js; è impostata nella CI e può essere impostata localmente.
+render.yaml descrive un web service e PostgreSQL 18 in Francoforte, a pagamento. Nessuna risorsa è stata creata; il Blueprint non è stato applicato o validato contro un account Render.
 
-## Pianificato da F0.2/F0.3
+Il database blocca le connessioni pubbliche per default. Il provisioning va svolto da un ambiente operativo fidato nella rete privata, oppure consentendo temporaneamente soltanto l'IP amministrativo e ripristinando subito il blocco. Prima verificare i privilegi CREATEROLE del fornitore: non sostituire lumio_app con un ruolo proprietario per aggirare problemi di provisioning.
 
-Target iniziale: Render in Francoforte, con web e PostgreSQL gestiti, poi background worker e Key Value compatibile Redis. Configurazione dichiarativa tramite `render.yaml`, introdotta insieme ai componenti effettivi. Nessuna configurazione ECS/RDS/ElastiCache iniziale.
+Procedura prima dell'attivazione:
 
-Il filesystem applicativo non sarà usato come archivio fotografico. S3 privato in UE verrà introdotto nella milestone media. Backup e prove di restore sono requisiti per il pilota con dati persistenti, non controlli disponibili oggi.
+1. Verificare costi, regione e requisiti del fornitore; autorizzare separatamente le risorse a pagamento.
+2. Configurare il database lumio e i ruoli tramite pnpm db:provision, poi pnpm db:migrate, in un ambiente operativo con credenziali admin/migrazioni separate.
+3. Impostare DATABASE_URL del web usando soltanto lumio_app e l'host interno. Non configurare ADMIN_DATABASE_URL o MIGRATION_DATABASE_URL nel servizio HTTP.
+4. Impostare APP_URL HTTPS definitivo, EMAIL_FROM verificato, SES in eu-central-1 e credenziali IAM limitate all'invio email. Non impostare LUMIO_LOCAL_TEST.
+5. Distribuire manualmente. pnpm start:hosted ascolta su 0.0.0.0 e usa PORT fornita dalla piattaforma. Readiness deve passare prima di considerare operativo lo staging.
+6. Provare verifica email, reset, MFA e isolamento; verificare backup e restore prima di usare dati reali.
 
-Prima dell'attivazione verificare costi correnti, regione, limiti, segreti e accessi di rete. Documentazione fornitore: [servizi](https://render.com/docs/service-types), [backup](https://render.com/docs/postgresql-backups), [filesystem](https://render.com/docs/disks).
+Nessuna migrazione automatica nel processo HTTP. Il Blueprint usa una replica perché il rate limit è in memoria. Aggiornamenti schema distruttivi e rollback dati richiedono procedure dedicate; non sono automatizzati.
+
+Riferimenti: [Blueprint](https://render.com/docs/blueprint-spec), [backup](https://render.com/docs/postgresql-backups). Worker, Redis, storage e pubblicazione di concorsi restano successivi.

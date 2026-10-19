@@ -10,4 +10,5 @@ test-results/
 *.tsbuildinfo
 *.log
 **/src/generated/
+**/next-env.d.ts
 .DS_Store

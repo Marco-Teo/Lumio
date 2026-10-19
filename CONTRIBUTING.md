@@ -1,39 +1,19 @@
 # Contribuire a Lumio
 
-## Ambiente e controlli
+Usare Node 24.22.0 e pnpm 12.14.0. Seguire il [README](README.md) per ambiente locale, Docker e migrazioni.
 
-Usare Node 24.22.0 e pnpm 12.14.0. Seguire il [README](README.md) per installazione e avvio.
+Prima del commit: pnpm lint, pnpm format:check, pnpm typecheck, pnpm test, pnpm test:integration, pnpm test:e2e e pnpm build. Test integrazione ed E2E richiedono PostgreSQL/Mailpit e dati sintetici. Non puntarli a produzione.
 
-Prima di un commit eseguire:
+TypeScript strict; nessun any ingiustificato. Dipendenze dirette con versione esatta, lockfile aggiornato e peer dependency compatibili. pnpm format applica lo stile, format:check non modifica file.
 
-```sh
-pnpm lint
-pnpm format:check
-pnpm typecheck
-pnpm test
-pnpm test:e2e
-pnpm build
-```
+Database: modificare schema e aggiungere migrazioni SQL versionate; rivedere sempre vincoli, privilegi e RLS. Non usare db push per aggiornare ambienti persistenti. Non modificare migrazioni già distribuite. Provare l'applicazione da database vuoto. Client Prisma generato escluso da Git.
 
-Chromium deve essere installato con `pnpm exec playwright install chromium`; su Linux può essere necessario `--with-deps`.
+I moduli tenant devono usare il client transazionale ricevuto da withOrganization; non recuperare un client globale all'interno della callback. L'identità deve provenire dalla sessione, non dal corpo della richiesta.
 
-## Convenzioni
+next-env.d.ts è generato da Next.js e ignorato da Git: dev e build producono riferimenti diversi ai tipi generati. Il comando typecheck esegue prima next typegen anche su clone pulito.
 
-- TypeScript strict, nessun `any` senza motivazione esplicita.
-- Dipendenze dirette con versione esatta e lockfile aggiornato.
-- Commit piccoli, coerenti e compilabili.
-- Test per validazione, sicurezza e contratti effettivi; evitare test che duplicano soltanto il rendering statico.
-- `pnpm format` corregge lo stile; `pnpm format:check` non modifica file.
-- Nessun segreto o file ambiente reale tracciato.
-- Nessun package condiviso finché non esiste un confine concreto.
-- Non modificare manualmente i file generati Next.js.
+Conservare separati account, persona e membership. Non aggiungere package senza confini reali; packages/database è l'unico package attuale. Non modificare manualmente i file generati Next.js; AGENTS.md contiene le istruzioni prodotte dal framework.
 
-## Limite della milestone
+Configurare nome/email autore solo nel repository. Nessun segreto, file ambiente reale, dump o log sensibile tracciato. Non condividere token in chat. I commit locali non pubblicano nulla su GitHub.
 
-F0.1 contiene solo foundation web e controlli. Database, autenticazione, console, Redis, worker, storage, email remote e funzionalità di concorso richiedono milestone successive autorizzate.
-
-Aggiornare sempre la documentazione distinguendo implementazione presente e decisioni pianificate. Non presentare RLS, backup o anonimizzazione come operativi prima dei relativi test.
-
-## Git
-
-Configurare autore ed email tramite `git config --local` se necessario. I commit locali non richiedono accesso a GitHub; un eventuale push richiede un remoto e autorizzazione separata. Non condividere token nel repository o nella chat.
+F0.2 termina con identità e isolamento verificati. Console di provisioning, inviti, worker, Redis e concorsi richiedono milestone successive. Documentare sempre separatamente quanto è operativo, verificato localmente o soltanto predisposto.
