@@ -16,5 +16,6 @@ export default defineConfig({
     url: 'http://127.0.0.1:3100/api/health/live',
     reuseExistingServer: false,
     timeout: 60_000,
+    env: { APP_URL: 'http://127.0.0.1:3100', LUMIO_LOCAL_TEST: '1' },
   },
 });
