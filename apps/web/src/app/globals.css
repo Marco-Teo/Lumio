@@ -54,3 +54,44 @@ h1 {
   color: #505c60;
   line-height: 1.6;
 }
+
+form {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 28rem);
+  margin: 1rem 0;
+}
+label {
+  display: grid;
+  gap: 0.4rem;
+}
+input,
+button {
+  font: inherit;
+  padding: 0.75rem;
+  border: 1px solid #748084;
+  border-radius: 0.4rem;
+}
+button {
+  cursor: pointer;
+  color: #fff;
+  background: #263d43;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+a {
+  color: #24515f;
+}
+:focus-visible {
+  outline: 3px solid #326d90;
+  outline-offset: 3px;
+}
+section {
+  width: min(100%, 38rem);
+}
+.secret-uri {
+  display: block;
+  overflow-wrap: anywhere;
+}

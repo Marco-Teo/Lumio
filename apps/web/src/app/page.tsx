@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function HomePage() {
   return (
     <main>
@@ -7,6 +9,10 @@ export default function HomePage() {
         Uno spazio per dare forma ai tuoi concorsi fotografici.
       </p>
       <p className="status">Il progetto è in preparazione.</p>
+      <nav aria-label="Account">
+        <Link href="/login">Accedi</Link> ·{' '}
+        <Link href="/register">Crea account</Link>
+      </nav>
     </main>
   );
 }
