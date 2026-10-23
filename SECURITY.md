@@ -33,3 +33,11 @@ L'invito contiene un token casuale di 256 bit, scadenza 72 ore e uso singolo. So
 Il link usa il fragment per non inviare il token nel percorso/query HTTP. La pagina lo conserva temporaneamente in sessionStorage per il passaggio al login, elimina il fragment e rimuove il valore dopo l'accettazione. Un cambio tab dopo la registrazione può richiedere di riaprire l'email originale. Nessun token è restituito nelle API amministrative, nell'audit o nei log.
 
 Il worker verifica ancora validità dell'invito e organizzazione attiva prima dell'invio. SMTP/SES non garantiscono exactly-once: una mail può essere duplicata dopo un crash, mentre membership e accettazione restano idempotenti. Email identità e inviti locali rimangono esclusivamente in Mailpit.
+
+## Configurazione delle competizioni — F1
+
+Le API tenant richiedono sessione verificata, MFA, membership admin e organizzazione attiva. Le mutazioni validano Origin contro APP_URL e input Zod strict; identità e tenant non provengono dal corpo. Errori generici con requestId non espongono dettagli database. RLS e FK composite restano una seconda difesa.
+
+I documenti sono testo semplice, renderizzato con escaping React, senza HTML arbitrario. Nessun upload documento o immagine in F1. La configurazione immagine non sostituisce i controlli reali sul file che verranno sviluppati nella pipeline. Nessun dato identificativo dei fotografi è stato aggiunto.
+
+Versione attesa e lock impediscono salvataggi persi o modifiche durante la pubblicazione. Audit e revisioni sono append-only per il runtime. Il proprietario migrazioni mantiene facoltà di manutenzione: le garanzie non proteggono da un operatore con tali credenziali.

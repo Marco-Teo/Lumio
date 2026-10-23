@@ -16,6 +16,8 @@ Conservare separati account, persona e membership. Non aggiungere package senza 
 
 Configurare nome/email autore solo nel repository. Nessun segreto, file ambiente reale, dump o log sensibile tracciato. Non condividere token in chat. I commit locali non pubblicano nulla su GitHub.
 
-F0.3 termina con console, inviti e worker verificati. Concorsi, immagini, pagamenti e giuria richiedono milestone successive. Documentare sempre separatamente quanto è operativo, verificato localmente o soltanto predisposto.
+F0.3 termina con console, inviti e worker verificati. F1 aggiunge la configurazione delle competizioni. Iscrizioni, immagini, pagamenti e giuria operativi richiedono milestone successive. Documentare sempre separatamente quanto è operativo, verificato localmente o soltanto predisposto.
 
 I test di integrazione ed E2E sull'outbox devono essere sequenziali, senza worker locale parallelo. Usare solo identità sintetiche e pulire i record del test con identificatori noti. Non attribuire privilegi piattaforma ad account reali dai seed. Il comando platform:grant-admin richiede sempre un'email verificata esplicita e produce audit.
+
+Per F1, ogni modifica deve preservare snapshot, vincoli tenant e state machine. I test coprono input non valido, pubblicazione incompleta, scritture concorrenti, immutabilità, sospensione e accesso dell'organizzatore da browser. Le fixture auth dei test business possono usare la vera libreria auth lato server per non consumare il rate limit HTTP condiviso; login e MFA HTTP restano coperti nei test auth e piattaforma.

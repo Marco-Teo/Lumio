@@ -27,3 +27,9 @@ Solo il Super Admin con email verificata e MFA vede l'elenco trasversale delle o
 La membership viene creata dalla capability di accettazione esclusivamente per il destinatario verificato e il tenant dell'invito. Sospensione e accettazione sono serializzate sul record organizzazione; un tenant sospeso è rifiutato da withOrganization.
 
 L'outbox è un piano operativo trasversale, accessibile solo alla piattaforma autorizzata, al migrator e al worker dedicato. Il worker imposta un tenant per transazione prima di leggere invito e organizzazione. Non dispone di accesso alle anagrafiche o alle credenziali.
+
+## Competizioni — F1
+
+La discovery mostra esclusivamente le membership della propria identità per scegliere le organizzazioni amministrate. Ogni apertura e mutazione della configurazione verifica membership admin, organizzazione attiva, email verificata e MFA.
+
+La funzione SQL can_manage_competitions applica gli stessi confini alle quattro nuove tabelle: servono contesto tenant e identità membro con requisiti di sicurezza presenti nel database. Il privilegio Super Admin non sostituisce la membership. Il worker non riceve accesso alle competizioni. Test dedicati coprono contesto assente/errato, sospensione, FK composite e accessi tra tenant.

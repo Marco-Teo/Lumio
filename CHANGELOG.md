@@ -1,6 +1,6 @@
 # Stato di avanzamento Lumio
 
-Questo registro descrive il lavoro completato fino a F0.3. Le funzionalità future sono indicate separatamente.
+Questo registro descrive il lavoro fino a F1. Le funzionalità future sono indicate separatamente.
 
 ## F0.1 — Repository eseguibile e controlli automatici
 
@@ -32,6 +32,26 @@ Superati installazione con lockfile, lint, formatting check, typecheck, 13 test 
 
 Le email di sviluppo arrivano in Mailpit, non nelle caselle reali. Le configurazioni locali e i segreti sono esclusi dal repository.
 
+## F1 — Configurazione delle competizioni
+
+- Aggiunta l'area organizzatore, raggiungibile dall'account e dopo l'accettazione dell'invito.
+- Implementati concorsi permanenti, più edizioni, sezioni singole/portfolio e ordinamento.
+- Aggiunte configurazioni per date, documenti, regole immagini, quote e metodo di voto.
+- Ogni salvataggio crea una revisione completa. Pubblicazione con controlli di completezza, blocco della configurazione e archiviazione successiva.
+- Aggiunti RLS, FK composite, audit e protezioni contro aggiornamenti concorrenti; nessun nuovo servizio o package.
+- Migliorate navigazione Account/Home, istruzioni del codice autenticatore e aiuti ai campi della console.
+
+Verifiche locali F1: lint, formatting check, typecheck, 17 unit test, 32 test di integrazione, 6 E2E e build. Le migrazioni sono provate anche su database vuoto. GitHub Actions include gli stessi comandi; questi risultati non attestano una nuova esecuzione remota.
+
+## Fix successivi a F1
+
+- Corretto il riuso del client Prisma durante hot reload: una vecchia istanza senza il modello Contest viene sostituita. Aggiunti due test di regressione, per un totale di 19 unit test.
+- Spostati i titoli dei gruppi dentro i riquadri dei moduli, evitando sovrapposizioni con i bordi.
+- Disabilitata e resa grigia la valuta per le edizioni gratuite; torna modificabile con pagamento manuale. Verificato nel browser anche il mantenimento della scelta precedente.
+- Verificata l'origine delle email in Mailpit: le email aggiuntive, inclusi i recuperi password, provenivano dalle fixture sintetiche dei test; nessun invito era rimasto in coda.
+
+Prima del rilascio resta da isolare anche la casella Mailpit delle prove manuali da quella dei test locali e aggiungere blocchi preventivi alle suite contro database o trasporti email di produzione. Queste protezioni ulteriori sono pianificate, non implementate. I test attuali vanno eseguiti esclusivamente su ambienti locali/CI sintetici come descritto nel README.
+
 ## Prossime funzionalità — non implementate
 
-La fase F1 proposta riguarda concorsi, edizioni, sezioni e regolamenti versionati. Non sono ancora disponibili creazione delle competizioni, iscrizioni dei partecipanti, caricamento fotografie, revisioni fotografiche, anonimizzazione delle immagini, giurie o pagamenti. I principi architetturali documentati per queste funzionalità restano requisiti per le fasi successive.
+Non sono ancora disponibili iscrizioni dei partecipanti, caricamento fotografie, revisioni fotografiche, anonimizzazione delle immagini, giurie o pagamenti operativi. La pubblicazione F1 non crea una pagina pubblica né apre iscrizioni. I principi architetturali documentati per queste funzionalità restano requisiti per le fasi successive.

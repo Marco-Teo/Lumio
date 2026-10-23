@@ -25,7 +25,7 @@ Procedura prima dell'attivazione:
 
 Nessuna migrazione automatica nel processo HTTP. Il Blueprint usa una replica perché il rate limit è in memoria. Aggiornamenti schema distruttivi e rollback dati richiedono procedure dedicate; non sono automatizzati.
 
-Riferimenti: [Blueprint](https://render.com/docs/blueprint-spec), [backup](https://render.com/docs/postgresql-backups). Storage fotografico e pubblicazione di concorsi restano successivi.
+Riferimenti: [Blueprint](https://render.com/docs/blueprint-spec), [backup](https://render.com/docs/postgresql-backups). Storage fotografico e pagine pubbliche dei concorsi restano successivi.
 
 ## Avvio worker e recupero
 
@@ -38,3 +38,7 @@ Il Blueprint prepara un Key Value privato con noeviction/persistenza e un backgr
 In caso di Redis indisponibile, le richieste di provisioning restano confermate in PostgreSQL e il dispatcher riprova. Dopo perdita della queue, gli eventi queued vengono ricreati dalla riconciliazione. Gli eventi failed richiedono reinvio esplicito dalla console. Se un'organizzazione era sospesa, riattivarla e reinviare gli inviti rimasti senza consegna. Non cancellare l'outbox per sbloccare una consegna.
 
 Restano da verificare sull'account remoto: Blueprint, privilegi del provider, consegna SES reale, costi e restore. Nessuna di queste attività è stata attivata automaticamente.
+
+## Upgrade F1
+
+Nessun servizio o segreto aggiuntivo. Applicare `pnpm db:migrate` con la credenziale migrator, generare il client con `pnpm db:generate`, eseguire i controlli e distribuire/riavviare il web. Le nuove tabelle e policy non richiedono credenziali privilegiate al web o al worker. Nessuna risorsa cloud è stata attivata per questa fase.
