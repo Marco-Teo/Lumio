@@ -255,6 +255,7 @@ export function EditionForm({
         </Field>
         <Field label="Valuta">
           <select
+            disabled={config.paymentMode === 'free'}
             value={config.currency}
             onChange={(e) =>
               set(

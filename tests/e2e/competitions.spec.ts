@@ -135,6 +135,22 @@ test('organizer configures, versions, publishes and archives an edition', async 
     await page.getByRole('button', { name: 'Salva concorso' }).click();
     await expect(page.getByRole('status')).toContainText('Concorso salvato');
     await page.getByRole('button', { name: 'Nuova edizione' }).click();
+    await expect(page.getByLabel('Valuta')).toBeDisabled();
+    await page.getByLabel('Modalità pagamento').selectOption('manual');
+    await expect(page.getByLabel('Valuta')).toBeEnabled();
+    await page.getByLabel('Valuta').selectOption('USD');
+    await page.getByLabel('Modalità pagamento').selectOption('free');
+    await expect(page.getByLabel('Valuta')).toBeDisabled();
+    await page.getByLabel('Modalità pagamento').selectOption('manual');
+    await expect(page.getByLabel('Valuta')).toHaveValue('USD');
+    await page.getByLabel('Modalità pagamento').selectOption('free');
+    for (const group of await page.locator('.edition-form > fieldset').all()) {
+      const box = await group.boundingBox();
+      const title = await group.locator(':scope > legend').boundingBox();
+      expect(box).not.toBeNull();
+      expect(title).not.toBeNull();
+      if (box && title) expect(title.y).toBeGreaterThan(box.y + 2);
+    }
     await page.getByLabel('Nome edizione').fill('Edizione 2027');
     await page.getByLabel('Slug edizione').fill('edizione-2027');
     await page.getByLabel('Anno o identificatore').fill('2027');
