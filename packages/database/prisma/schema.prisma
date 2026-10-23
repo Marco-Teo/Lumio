@@ -103,6 +103,7 @@ model Organization {
   memberships  OrganizationMembership[]
   auditEvents  AuditEvent[]
   invitations OrganizationInvitation[]
+  contests Contest[]
   @@map("organization")
 }
 
@@ -181,8 +182,76 @@ model AuditEvent {
   actorMembershipId String
   action            String
   entityId          String
+  before            Json?
+  after             Json?
   createdAt         DateTime @default(now())
   organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   @@index([organizationId, createdAt], map: "audit_organization_created")
   @@map("audit_event")
+}
+
+model Contest {
+  id String @id @default(uuid())
+  organizationId String
+  name String
+  slug String
+  description String @default("")
+  createdAt DateTime @default(now())
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  editions Edition[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, slug])
+  @@map("contest")
+}
+
+model Edition {
+  id String @id @default(uuid())
+  organizationId String
+  contestId String
+  name String
+  slug String
+  identifier String
+  status String @default("draft")
+  version Int @default(1)
+  publishedAt DateTime?
+  createdAt DateTime @default(now())
+  contest Contest @relation(fields: [organizationId, contestId], references: [organizationId, id], onDelete: Restrict)
+  sections Section[]
+  revisions EditionRevision[]
+  @@unique([organizationId, id])
+  @@unique([organizationId, contestId, slug])
+  @@map("edition")
+}
+
+model Section {
+  id String @id @default(uuid())
+  organizationId String
+  editionId String
+  name String
+  code String
+  description String
+  theme String
+  type String
+  minImages Int
+  maxImages Int
+  feeCents Int
+  specificRules String
+  position Int
+  edition Edition @relation(fields: [organizationId, editionId], references: [organizationId, id], onDelete: Restrict)
+  @@unique([organizationId, editionId, code])
+  @@index([organizationId, editionId, position])
+  @@map("section")
+}
+
+model EditionRevision {
+  id String @id @default(uuid())
+  organizationId String
+  editionId String
+  version Int
+  configuration Json
+  actorUserId String
+  createdAt DateTime @default(now())
+  edition Edition @relation(fields: [organizationId, editionId], references: [organizationId, id], onDelete: Restrict)
+  @@unique([organizationId, editionId, version])
+  @@map("edition_revision")
 }
