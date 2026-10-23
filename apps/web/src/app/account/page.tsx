@@ -12,6 +12,9 @@ export default async function Account() {
   if (!session) redirect('/login');
   return (
     <main>
+      <Link href="/" className="home-link">
+        Torna alla home
+      </Link>
       <h1>Il tuo account</h1>
       <p>{session.user.name}</p>
       <p>{session.user.email}</p>

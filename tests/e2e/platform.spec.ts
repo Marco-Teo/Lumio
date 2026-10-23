@@ -72,11 +72,15 @@ test('platform provisioning, invitation delivery, recipient acceptance and suspe
     await expect(page.getByRole('status')).toContainText('attivata');
     await page.goto('/platform');
     await page
-      .getByLabel('Nome organizzazione')
+      .getByLabel('Nome organizzazione', { exact: true })
       .fill(`Associazione E2E ${suffix}`);
     await page.getByLabel('Slug', { exact: true }).fill(slug);
-    await page.getByLabel('Email di contatto').fill(recipientEmail);
-    await page.getByLabel('Email primo amministratore').fill(recipientEmail);
+    await page
+      .getByLabel('Email di contatto', { exact: true })
+      .fill(recipientEmail);
+    await page
+      .getByLabel('Email primo amministratore', { exact: true })
+      .fill(recipientEmail);
     await page
       .getByRole('button', { name: 'Crea organizzazione e invita' })
       .click();
@@ -87,7 +91,7 @@ test('platform provisioning, invitation delivery, recipient acceptance and suspe
       where: { slug },
     });
     organizationId = created.id;
-    await page.getByLabel('Cerca per nome o slug').fill(slug);
+    await page.getByLabel('Cerca per nome o slug', { exact: true }).fill(slug);
     await page.getByRole('button', { name: 'Cerca', exact: true }).click();
     const row = page
       .getByRole('row')
@@ -139,7 +143,7 @@ test('platform provisioning, invitation delivery, recipient acceptance and suspe
     await expect(row).toContainText('accettato');
     await row.getByRole('button', { name: 'Sospendi', exact: true }).click();
     await page
-      .getByLabel('Motivazione')
+      .getByLabel('Motivazione', { exact: true })
       .fill('Verifica sospensione organizzazione E2E');
     await page.getByRole('button', { name: 'Conferma modifica' }).click();
     await expect(row).toContainText('Sospesa');

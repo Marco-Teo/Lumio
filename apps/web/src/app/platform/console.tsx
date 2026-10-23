@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { FieldHelp } from './field-help';
 
 type OrganizationRow = {
   id: string;
@@ -130,12 +131,33 @@ export function PlatformConsole() {
       <section aria-labelledby="create-organization">
         <h2 id="create-organization">Nuova organizzazione</h2>
         <form onSubmit={create}>
-          <label>
-            Nome organizzazione
-            <input name="name" required minLength={2} maxLength={120} />
-          </label>
-          <label htmlFor="organization-slug">
-            Slug
+          <div>
+            <div className="field-heading">
+              <label htmlFor="organization-name">Nome organizzazione</label>
+              <FieldHelp
+                id="name-help"
+                label="Nome organizzazione"
+                text="Il nome dell’ente o del gruppo che gestirà le competizioni."
+              />
+            </div>
+            <input
+              id="organization-name"
+              aria-describedby="name-help"
+              name="name"
+              required
+              minLength={2}
+              maxLength={120}
+            />
+          </div>
+          <div>
+            <div className="field-heading">
+              <label htmlFor="organization-slug">Slug</label>
+              <FieldHelp
+                id="slug-help"
+                label="Slug"
+                text="Un identificativo unico, ad esempio fotoclub-roma. Usa lettere minuscole, numeri e trattini. Non sarà modificabile."
+              />
+            </div>
             <input
               id="organization-slug"
               name="slug"
@@ -145,18 +167,43 @@ export function PlatformConsole() {
               maxLength={80}
               pattern="[a-z0-9]+(-[a-z0-9]+)*"
             />
-          </label>
-          <small id="slug-help">
-            Lettere minuscole, numeri e trattini. Non sarà modificabile.
-          </small>
-          <label>
-            Email di contatto
-            <input name="contactEmail" type="email" required />
-          </label>
-          <label>
-            Email primo amministratore
-            <input name="adminEmail" type="email" required />
-          </label>
+          </div>
+          <div>
+            <div className="field-heading">
+              <label htmlFor="organization-contact">Email di contatto</label>
+              <FieldHelp
+                id="contact-help"
+                label="Email di contatto"
+                text="L’indirizzo di riferimento dell’organizzazione. L’invito sarà inviato invece all’email del primo amministratore."
+              />
+            </div>
+            <input
+              id="organization-contact"
+              aria-describedby="contact-help"
+              name="contactEmail"
+              type="email"
+              required
+            />
+          </div>
+          <div>
+            <div className="field-heading">
+              <label htmlFor="organization-admin">
+                Email primo amministratore
+              </label>
+              <FieldHelp
+                id="admin-help"
+                label="Email primo amministratore"
+                text="La persona che gestirà l’organizzazione riceverà qui l’invito. Dovrà accettarlo con un account verificato con questa email."
+              />
+            </div>
+            <input
+              id="organization-admin"
+              aria-describedby="admin-help"
+              name="adminEmail"
+              type="email"
+              required
+            />
+          </div>
           <button disabled={busy}>Crea organizzazione e invita</button>
         </form>
       </section>
@@ -171,10 +218,22 @@ export function PlatformConsole() {
             setPage(1);
           }}
         >
-          <label>
-            Cerca per nome o slug
-            <input name="q" maxLength={100} />
-          </label>
+          <div>
+            <div className="field-heading">
+              <label htmlFor="organization-search">Cerca per nome o slug</label>
+              <FieldHelp
+                id="search-help"
+                label="Cerca per nome o slug"
+                text="Inserisci tutto o parte del nome o dello slug. Lascia vuoto per mostrare tutte le organizzazioni."
+              />
+            </div>
+            <input
+              id="organization-search"
+              aria-describedby="search-help"
+              name="q"
+              maxLength={100}
+            />
+          </div>
           <button>Cerca</button>
         </form>
         <button onClick={() => void load()}>Aggiorna stato invii</button>
@@ -315,10 +374,24 @@ export function PlatformConsole() {
             {selected.name}
           </h2>
           <form onSubmit={changeStatus}>
-            <label>
-              Motivazione
-              <textarea name="reason" required minLength={5} maxLength={500} />
-            </label>
+            <div>
+              <div className="field-heading">
+                <label htmlFor="organization-reason">Motivazione</label>
+                <FieldHelp
+                  id="reason-help"
+                  label="Motivazione"
+                  text="Spiega il motivo della sospensione o riattivazione, da 5 a 500 caratteri. Sarà conservato nel registro attività."
+                />
+              </div>
+              <textarea
+                id="organization-reason"
+                aria-describedby="reason-help"
+                name="reason"
+                required
+                minLength={5}
+                maxLength={500}
+              />
+            </div>
             <button disabled={busy}>Conferma modifica</button>
             <button type="button" onClick={() => setSelected(null)}>
               Annulla

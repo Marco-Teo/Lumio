@@ -115,16 +115,24 @@ export function AuthForm({
         </label>
       )}
       {mode === 'two-factor' && (
-        <label>
-          {useBackupCode ? 'Codice di recupero' : 'Codice autenticatore'}
-          <input
-            name="code"
-            required
-            inputMode={useBackupCode ? 'text' : 'numeric'}
-            autoComplete="one-time-code"
-            pattern={useBackupCode ? undefined : '[0-9]{6}'}
-          />
-        </label>
+        <>
+          <p id="two-factor-help">
+            {useBackupCode
+              ? 'Inserisci uno dei codici di recupero salvati quando hai attivato la verifica in due passaggi.'
+              : 'Inserisci il codice dell’app autenticatore sul tuo telefono.'}
+          </p>
+          <label>
+            {useBackupCode ? 'Codice di recupero' : 'Codice autenticatore'}
+            <input
+              name="code"
+              required
+              inputMode={useBackupCode ? 'text' : 'numeric'}
+              autoComplete="one-time-code"
+              aria-describedby="two-factor-help"
+              pattern={useBackupCode ? undefined : '[0-9]{6}'}
+            />
+          </label>
+        </>
       )}
       <button disabled={pending}>{pending ? 'Attendi…' : 'Continua'}</button>
       {mode === 'login' && (
