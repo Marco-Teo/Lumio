@@ -87,6 +87,7 @@ export default function InvitationPage() {
         </>
       )}
       <p role="status">{message}</p>
+      {accepted && <Link href="/organizations">Le tue organizzazioni</Link>}
       <Link href="/account">Il tuo account</Link>
     </main>
   );
