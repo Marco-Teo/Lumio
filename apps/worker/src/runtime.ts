@@ -8,6 +8,7 @@ import {
   queueName,
   redisConnection,
   tokenHash,
+  registrationReceiptSchema,
 } from '@lumio/jobs';
 import type { EmailMessage } from '@lumio/jobs/mail';
 
@@ -54,6 +55,38 @@ export function startRuntime(options: WorkerOptions) {
             )
               return;
             if (event.type === 'system.ping') {
+              await tx.outboxEvent.update({
+                where: { id: event.id },
+                data: {
+                  status: 'completed',
+                  attempts: { increment: 1 },
+                  lastErrorCode: null,
+                },
+              });
+              return;
+            }
+            if (event.type === 'registration.started') {
+              if (!event.organizationId || !event.registrationId)
+                throw new UnrecoverableError('INVALID_EVENT');
+              const payload = event.payload as { encryptedReceipt?: unknown };
+              if (typeof payload.encryptedReceipt !== 'string')
+                throw new UnrecoverableError('INVALID_PAYLOAD');
+              const receipt = registrationReceiptSchema.parse(
+                JSON.parse(
+                  openToken(payload.encryptedReceipt, options.encryptionKey),
+                ),
+              );
+              if (receipt.registrationId !== event.registrationId)
+                throw new UnrecoverableError('INVALID_PAYLOAD');
+              const link = new URL(
+                `/registrations/${receipt.registrationId}`,
+                options.appUrl,
+              );
+              await options.sendEmail({
+                to: receipt.to,
+                subject: 'Lumio — bozza di iscrizione ricevuta',
+                text: `La tua bozza di iscrizione è stata salvata correttamente.\n\nConcorso: ${receipt.contestName}\nEdizione: ${receipt.editionName}\nOrganizzazione destinataria: ${receipt.organizationName}\nContatto organizzatore: ${receipt.contactEmail}\nRiferimento: ${receipt.registrationId}\n\nL’organizzatore può vedere la tua bozza. Non è richiesta un’approvazione dell’admin e non devi attendere una sua risposta.\n\nOra controlla e completa i dati della tua iscrizione:\n${link.toString()}\n\nQuesta email conferma il salvataggio della bozza, non l’iscrizione definitiva. Caricamento delle opere, eventuale pagamento e conferma finale non sono ancora disponibili. Non occorre effettuare pagamenti in questa fase.`,
+              });
               await tx.outboxEvent.update({
                 where: { id: event.id },
                 data: {

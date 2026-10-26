@@ -2,6 +2,8 @@ import '../../scripts/testing/preflight';
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
+import { startRuntime } from '../../apps/worker/src/runtime';
 import { createDatabase } from '@lumio/database';
 import { database } from '../../apps/web/src/server/database';
 import {
@@ -221,6 +223,104 @@ test('participant profile and registration ownership across tenants', async (t) 
     },
   );
   await t.test(
+    'receipt is encrypted, retried and not duplicated by repeated registration requests',
+    async () => {
+      if (
+        !process.env.WORKER_DATABASE_URL ||
+        !process.env.REDIS_URL ||
+        !process.env.JOB_PAYLOAD_KEY
+      )
+        throw new Error('Worker fixture config missing');
+      const events = await owner.outboxEvent.findMany({
+        where: { registrationId, type: 'registration.started' },
+      });
+      assert.equal(events.length, 1);
+      assert.equal(
+        JSON.stringify(events[0].payload).includes(participant.email),
+        false,
+      );
+      let deliveries = 0;
+      const service = startRuntime({
+        databaseUrl: process.env.WORKER_DATABASE_URL,
+        redisUrl: process.env.REDIS_URL,
+        encryptionKey: process.env.JOB_PAYLOAD_KEY,
+        appUrl: 'http://127.0.0.1:3100',
+        queue: `receipt-${suffix}`,
+        pollMilliseconds: 40,
+        sendEmail: async (message) => {
+          deliveries++;
+          assert.equal(message.to, participant.email);
+          assert.match(message.subject, /bozza di iscrizione ricevuta/);
+          assert.ok(message.text.includes('Concorso A'));
+          assert.ok(message.text.includes(orgA));
+          assert.match(message.text, /non l’iscrizione definitiva/);
+          if (deliveries === 1) throw new Error('Synthetic delivery failure');
+        },
+      });
+      try {
+        const deadline = Date.now() + 10000;
+        while (
+          (
+            await owner.outboxEvent.findUniqueOrThrow({
+              where: { id: events[0].id },
+            })
+          ).status !== 'completed'
+        ) {
+          if (Date.now() > deadline)
+            throw new Error('Receipt was not completed');
+          await delay(50);
+        }
+        const duplicate = await service.queue.add(
+          'duplicate',
+          { outboxId: events[0].id },
+          { jobId: `duplicate-${events[0].id}`, removeOnComplete: false },
+        );
+        while ((await duplicate.getState()) !== 'completed') {
+          if (Date.now() > deadline)
+            throw new Error('Duplicate was not processed');
+          await delay(50);
+        }
+        assert.equal(deliveries, 2);
+        assert.equal(
+          (await registrationDetail(participant, registrationId)).receiptStatus,
+          'completed',
+        );
+      } finally {
+        await service.close();
+      }
+    },
+  );
+  await t.test(
+    'missing receipt configuration rolls back registration and audit together',
+    async () => {
+      const key = process.env.JOB_PAYLOAD_KEY;
+      delete process.env.JOB_PAYLOAD_KEY;
+      try {
+        await assert.rejects(
+          startRegistration(other, editionA.id, consent),
+          /encryption configuration/,
+        );
+      } finally {
+        process.env.JOB_PAYLOAD_KEY = key;
+      }
+      const person = await owner.person.findUniqueOrThrow({
+        where: { userId: other.id },
+      });
+      assert.equal(
+        await owner.registration.count({
+          where: { personId: person.id, editionId: editionA.id },
+        }),
+        0,
+      );
+      assert.equal(
+        await owner.registrationEvent.count({
+          where: { actorUserId: other.id },
+        }),
+        0,
+      );
+    },
+  );
+  await t.test(
     'profile changes and per-registration changes never overwrite one another',
     async () => {
       await saveParticipantProfile(participant, {
@@ -326,6 +426,9 @@ test('participant profile and registration ownership across tenants', async (t) 
                 where: { userId: other.id },
               })
             ).id,
+            organizationName: 'Synthetic',
+            contestName: 'Synthetic',
+            contactEmail: 'synthetic@example.invalid',
             status: 'profile_incomplete',
             profileSnapshot: {},
             configurationSnapshot: {},

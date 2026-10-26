@@ -11,6 +11,16 @@ export const jobPayloadSchema = z.object({ outboxId: z.uuid() });
 export const invitePayloadSchema = z.object({
   encryptedToken: z.string().min(10),
 });
+export const registrationReceiptSchema = z
+  .object({
+    registrationId: z.uuid(),
+    to: z.email(),
+    organizationName: z.string().min(1),
+    contestName: z.string().min(1),
+    editionName: z.string().min(1),
+    contactEmail: z.email(),
+  })
+  .strict();
 export function tokenHash(token: string) {
   return createHash('sha256').update(token).digest('hex');
 }

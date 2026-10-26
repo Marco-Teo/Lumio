@@ -8,6 +8,7 @@ import {
   transitionEdition,
 } from '../../apps/web/src/server/competitions';
 import { emptyEdition } from '../../apps/web/src/lib/competitions';
+import { emailLink } from './helpers';
 
 test('participant starts an edition registration with independent profile data and versioned documents', async ({
   page,
@@ -114,6 +115,19 @@ test('participant starts an edition registration with independent profile data a
     await page.getByRole('button', { name: 'Inizia iscrizione' }).click();
     await expect(page).toHaveURL(/\/registrations\/[a-f0-9-]+$/);
     const registrationPath = new URL(page.url()).pathname;
+    await expect(
+      page.getByRole('heading', {
+        name: 'La tua bozza di iscrizione è stata ricevuta',
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('region', { name: 'Riepilogo iscrizione' }),
+    ).toContainText(org.name);
+    await expect(
+      page.getByRole('region', { name: 'Riepilogo iscrizione' }),
+    ).toContainText('Non devi attendere un’approvazione');
+    const receiptLink = await emailLink(request, email, '/registrations/');
+    expect(new URL(receiptLink).pathname).toBe(registrationPath);
     await expect(page.getByText('Stato: Opere da aggiungere')).toBeVisible();
     await expect(page.getByLabel('Nome', { exact: true })).toHaveValue(
       'Profilo originale',

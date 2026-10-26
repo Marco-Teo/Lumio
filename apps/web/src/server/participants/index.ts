@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { sealToken } from '@lumio/jobs';
 import type { Prisma } from '@lumio/database';
 import { database } from '../database';
 import { AccessError } from '../authorization';
@@ -32,6 +33,7 @@ type PublishedEdition = {
   organizationId: string;
   organizationName: string;
   contestName: string;
+  contactEmail: string;
   version: number;
   configuration: unknown;
 };
@@ -141,9 +143,14 @@ export async function registrationDetail(actor: ParticipantActor, id: string) {
     const [row] = await tx.$queryRaw<
       Array<{ open: boolean }>
     >`SELECT registration_window_open(${registration.organizationId},${registration.editionId},${registration.editionVersion}) AS open`;
+    const receipt = await tx.outboxEvent.findFirst({
+      where: { registrationId: id, type: 'registration.started' },
+      select: { status: true },
+    });
     return {
       ...registration,
       editable: row.open,
+      receiptStatus: receipt?.status ?? null,
     };
   });
 }
@@ -192,6 +199,9 @@ export async function startRegistration(
         editionId,
         editionVersion: edition.version,
         personId: person.id,
+        organizationName: edition.organizationName,
+        contestName: edition.contestName,
+        contactEmail: edition.contactEmail,
         profileSnapshot: snapshot,
         configurationSnapshot: edition.configuration,
         status: profileStatus(profile),
@@ -208,6 +218,28 @@ export async function startRegistration(
           status: registration.status,
           editionVersion: edition.version,
           profile: snapshot,
+        },
+      },
+    });
+    const key = process.env.JOB_PAYLOAD_KEY;
+    if (!key) throw new Error('Receipt encryption configuration missing');
+    await tx.outboxEvent.create({
+      data: {
+        organizationId: edition.organizationId,
+        registrationId: registration.id,
+        type: 'registration.started',
+        payload: {
+          encryptedReceipt: sealToken(
+            JSON.stringify({
+              registrationId: registration.id,
+              to: actor.email,
+              organizationName: edition.organizationName,
+              contestName: edition.contestName,
+              editionName: edition.configuration.name,
+              contactEmail: edition.contactEmail,
+            }),
+            key,
+          ),
         },
       },
     });

@@ -38,6 +38,46 @@ export default async function RegistrationPage({
         <Link href="/account/profile">Il tuo profilo</Link>
       </nav>
       <h1>{config.name}</h1>
+      <section
+        className="publication-feedback"
+        aria-label="Riepilogo iscrizione"
+      >
+        <h2>La tua bozza di iscrizione è stata ricevuta</h2>
+        <p>
+          Concorso: <strong>{registration.contestName}</strong> · Edizione:{' '}
+          <strong>{config.name}</strong>
+        </p>
+        <p>
+          Organizzazione destinataria:{' '}
+          <strong>{registration.organizationName}</strong>. L’organizzatore può
+          vedere la tua bozza.
+        </p>
+        <p>
+          Per informazioni:{' '}
+          <a href={`mailto:${registration.contactEmail}`}>
+            {registration.contactEmail}
+          </a>
+          .
+        </p>
+        <p>
+          Ora controlla e completa i dati qui sotto. Non devi attendere
+          un’approvazione o una risposta dell’admin.
+        </p>
+        <p>
+          Questa è una bozza, non un’iscrizione definitiva. Caricamento delle
+          opere, eventuale pagamento e conferma finale non sono ancora
+          disponibili.
+        </p>
+        {registration.receiptStatus && (
+          <p>
+            {registration.receiptStatus === 'completed'
+              ? `Email di riepilogo inviata a ${snapshot.email}.`
+              : registration.receiptStatus === 'failed'
+                ? 'Invio dell’email non riuscito; la bozza è comunque salvata.'
+                : `Email di riepilogo in preparazione per ${snapshot.email}.`}
+          </p>
+        )}
+      </section>
       <p>Email dell’iscrizione: {snapshot.email}</p>
       <RegistrationEditor
         initial={{
