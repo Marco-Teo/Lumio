@@ -89,6 +89,15 @@ model Person {
   userId    String? @unique
   firstName String?
   lastName  String?
+  phone String?
+  birthDate String?
+  address String?
+  city String?
+  province String?
+  postalCode String?
+  country String?
+  profileVersion Int @default(1)
+  registrations Registration[]
   user      User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   @@map("person")
 }
@@ -252,6 +261,44 @@ model EditionRevision {
   actorUserId String
   createdAt DateTime @default(now())
   edition Edition @relation(fields: [organizationId, editionId], references: [organizationId, id], onDelete: Restrict)
+  registrations Registration[]
   @@unique([organizationId, editionId, version])
   @@map("edition_revision")
+}
+
+model Registration {
+  id String @id @default(uuid())
+  organizationId String
+  editionId String
+  editionVersion Int
+  personId String
+  profileSnapshot Json
+  configurationSnapshot Json
+  status String
+  version Int @default(1)
+  regulationsAcceptedAt DateTime @default(now())
+  privacyAcknowledgedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  person Person @relation(fields: [personId], references: [id], onDelete: Restrict)
+  revision EditionRevision @relation(fields: [organizationId, editionId, editionVersion], references: [organizationId, editionId, version], onDelete: Restrict)
+  events RegistrationEvent[]
+  @@unique([organizationId, id])
+  @@unique([editionId, personId])
+  @@index([organizationId, editionId, createdAt])
+  @@map("registration")
+}
+
+model RegistrationEvent {
+  id String @id @default(uuid())
+  organizationId String
+  registrationId String
+  actorUserId String
+  action String
+  before Json
+  after Json
+  createdAt DateTime @default(now())
+  registration Registration @relation(fields: [organizationId, registrationId], references: [organizationId, id], onDelete: Restrict)
+  @@index([organizationId, registrationId, createdAt])
+  @@map("registration_event")
 }
