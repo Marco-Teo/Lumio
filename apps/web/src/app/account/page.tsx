@@ -20,6 +20,9 @@ export default async function Account() {
       <p>{session.user.email}</p>
       <p>Email verificata: {session.user.emailVerified ? 'sì' : 'no'}</p>
       <Link href="/organizations">Le tue organizzazioni</Link>
+      <Link href="/account/profile">Il tuo profilo</Link>
+      <Link href="/registrations">Le tue iscrizioni</Link>
+      <Link href="/editions">Edizioni pubblicate</Link>
       {(await hasPlatformRole(session.user.id)) && (
         <Link href="/platform">Console Lumio</Link>
       )}

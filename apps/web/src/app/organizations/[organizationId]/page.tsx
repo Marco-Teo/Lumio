@@ -43,6 +43,9 @@ export default async function OrganizationCompetitions({
         <Link href="/account">Il tuo account</Link>
       </nav>
       <h1>{data.organization.name}</h1>
+      <Link href={`/organizations/${organizationId}/registrations`}>
+        Iscrizioni dell’organizzazione
+      </Link>
       <CompetitionConsole organizationId={organizationId} />
     </main>
   );

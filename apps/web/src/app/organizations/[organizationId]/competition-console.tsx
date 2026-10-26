@@ -103,8 +103,9 @@ export function CompetitionConsole({
   return (
     <>
       <p>
-        Ogni concorso può avere più edizioni. Le iscrizioni dei fotografi e il
-        caricamento delle immagini arriveranno nelle fasi successive.
+        Ogni concorso può avere più edizioni. Le bozze di iscrizione sono
+        disponibili nelle date configurate; caricamento delle immagini e
+        conferma definitiva arriveranno nelle fasi successive.
       </p>
       <section>
         <h2>{editingContest.id ? 'Modifica concorso' : 'Nuovo concorso'}</h2>
@@ -255,7 +256,7 @@ export function CompetitionConsole({
                         if (
                           !window.confirm(
                             status === 'published'
-                              ? 'Pubblicare questa edizione? La configurazione non sarà più modificabile. Le iscrizioni non vengono ancora aperte.'
+                              ? 'Pubblicare questa edizione? La configurazione non sarà più modificabile. Le iscrizioni saranno disponibili nelle date configurate.'
                               : 'Archiviare questa edizione?',
                           )
                         )

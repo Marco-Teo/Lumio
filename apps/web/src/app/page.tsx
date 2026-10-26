@@ -12,6 +12,10 @@ export default function HomePage() {
       <nav aria-label="Account">
         <Link href="/login">Accedi</Link> ·{' '}
         <Link href="/register">Crea account</Link>
+        {' · '}
+        <Link href="/editions">Edizioni pubblicate</Link>
+        {' · '}
+        <Link href="/account">Il tuo account</Link>
       </nav>
     </main>
   );

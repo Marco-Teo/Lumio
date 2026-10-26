@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { authClient } from './auth-client';
+import { safeReturnTo } from '../../lib/return-to';
 
 export function AuthForm({
   mode,
@@ -21,11 +22,7 @@ export function AuthForm({
     const requestedReturn = new URLSearchParams(window.location.search).get(
       'returnTo',
     );
-    const destination =
-      requestedReturn &&
-      ['/account', '/platform', '/invitations'].includes(requestedReturn)
-        ? requestedReturn
-        : '/account';
+    const destination = safeReturnTo(requestedReturn);
     try {
       if (mode === 'register') {
         const result = await authClient.signUp.email({
