@@ -156,6 +156,9 @@ test('organizer configures, versions, publishes and archives an edition', async 
     await page.getByLabel('Anno o identificatore').fill('2027');
     await page.getByRole('button', { name: 'Salva bozza' }).click();
     await expect(page.getByRole('status')).toContainText('Bozza salvata');
+    await expect(
+      page.getByText('Per pubblicare questa edizione:'),
+    ).toBeVisible();
     page.on('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: 'Pubblica edizione' }).click();
     await expect(page.getByRole('status')).toContainText(
@@ -200,6 +203,32 @@ test('organizer configures, versions, publishes and archives an edition', async 
     ).toBeVisible();
     await page.getByRole('button', { name: 'Pubblica edizione' }).click();
     await expect(page.getByRole('status')).toContainText('Edizione pubblicata');
+    const savedEdition = await owner.edition.findFirstOrThrow({
+      where: { organizationId, name: 'Edizione 2027' },
+    });
+    expect(savedEdition.status).toBe('published');
+    expect(savedEdition.publishedAt).not.toBeNull();
+    expect(
+      await owner.auditEvent.count({
+        where: {
+          organizationId,
+          entityId: savedEdition.id,
+          action: 'edition.published',
+        },
+      }),
+    ).toBe(1);
+    await expect(
+      page.getByRole('link', { name: 'Apri pagina pubblica' }),
+    ).toHaveAttribute('href', `/editions/${savedEdition.id}`);
+    const publicPage = await page.context().newPage();
+    await publicPage.goto('/editions');
+    await publicPage
+      .getByRole('link', { name: 'Edizione 2027', exact: true })
+      .click();
+    await expect(
+      publicPage.getByRole('heading', { name: 'Edizione 2027', exact: true }),
+    ).toBeVisible();
+    await publicPage.close();
     await expect(
       page.getByRole('button', { name: 'Configura edizione' }),
     ).toHaveCount(0);

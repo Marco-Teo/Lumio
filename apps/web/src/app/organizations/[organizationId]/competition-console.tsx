@@ -1,10 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import {
   contestSchema,
   editionSchema,
   emptyEdition,
+  publicationIssues,
   type EditionConfiguration,
 } from '../../../lib/competitions';
 import { EditionForm } from './edition-form';
@@ -29,6 +31,23 @@ type ContestRow = {
   editions: EditionRow[];
 };
 type ContestInput = { name: string; slug: string; description: string };
+function PublicationChecklist({ configuration }: { configuration: unknown }) {
+  const parsed = editionSchema.safeParse(configuration);
+  const issues = parsed.success
+    ? publicationIssues(parsed.data)
+    : ['Salva una configurazione valida.'];
+  if (!issues.length) return null;
+  return (
+    <aside className="publication-feedback">
+      <p>Per pubblicare questa edizione:</p>
+      <ul>
+        {issues.map((issue) => (
+          <li key={issue}>{issue}</li>
+        ))}
+      </ul>
+    </aside>
+  );
+}
 async function call<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...options,
@@ -52,6 +71,10 @@ export function CompetitionConsole({
   const [contests, setContests] = useState<ContestRow[]>([]);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [editionNotice, setEditionNotice] = useState<{
+    id: string;
+    text: string;
+  } | null>(null);
   const [editingContest, setEditingContest] = useState<{
     id?: string;
     data: ContestInput;
@@ -69,18 +92,31 @@ export function CompetitionConsole({
   useEffect(() => {
     void load().catch(() => setMessage('Impossibile caricare i concorsi.'));
   }, [load]);
-  async function perform(action: () => Promise<void>, success: string) {
+  async function perform(
+    action: () => Promise<void>,
+    success: string,
+    editionId?: string,
+  ) {
     if (busy) return;
     setBusy(true);
     setMessage('');
+    setEditionNotice(null);
     try {
       await action();
-      await load();
       setMessage(success);
+      if (editionId) setEditionNotice({ id: editionId, text: success });
+      try {
+        await load();
+      } catch {
+        setMessage(
+          `${success} Aggiornamento elenco non riuscito: ricarica la pagina.`,
+        );
+      }
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : 'Operazione non riuscita',
-      );
+      const text =
+        error instanceof Error ? error.message : 'Operazione non riuscita';
+      setMessage(text);
+      if (editionId) setEditionNotice({ id: editionId, text });
     } finally {
       setBusy(false);
     }
@@ -220,7 +256,20 @@ export function CompetitionConsole({
                       : 'Archiviata'}{' '}
                   · Versione {edition.version}
                 </p>
+                {edition.status === 'draft' && (
+                  <PublicationChecklist
+                    configuration={edition.revisions[0]?.configuration}
+                  />
+                )}
+                {editionNotice?.id === edition.id && (
+                  <p className="publication-feedback">{editionNotice.text}</p>
+                )}
                 <div className="actions">
+                  {edition.status === 'published' && (
+                    <Link href={`/editions/${edition.id}`}>
+                      Apri pagina pubblica
+                    </Link>
+                  )}
                   <button
                     disabled={busy}
                     onClick={() => {
@@ -276,8 +325,9 @@ export function CompetitionConsole({
                             setEditingEdition(null);
                           },
                           status === 'published'
-                            ? 'Edizione pubblicata. Configurazione bloccata.'
+                            ? 'Edizione pubblicata correttamente. Ora è visibile in Edizioni pubblicate. La configurazione è bloccata.'
                             : 'Edizione archiviata.',
+                          edition.id,
                         );
                       }}
                     >

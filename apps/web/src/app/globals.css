@@ -276,3 +276,10 @@ pre {
   width: auto;
   flex-shrink: 0;
 }
+
+.publication-feedback {
+  padding: 0.75rem 1rem;
+  border-left: 3px solid #326d90;
+  background: #e6edeb;
+  border-radius: 0.25rem;
+}
