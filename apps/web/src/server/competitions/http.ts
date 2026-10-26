@@ -3,6 +3,7 @@ import { Prisma } from '@lumio/database';
 import { authentication } from '../auth';
 import { AccessError } from '../authorization';
 import { CompetitionError } from './index';
+import { competitionFormIssues } from '../../lib/competition-errors';
 
 export async function competitionRequest(request: Request) {
   if (
@@ -22,7 +23,7 @@ export function json(data: unknown, status = 200) {
     headers: { 'Cache-Control': 'no-store' },
   });
 }
-export function errorResponse(error: unknown) {
+export function errorResponse(error: unknown, kind?: 'contest' | 'edition') {
   let status = 503,
     message = 'Servizio temporaneamente non disponibile';
   if (error instanceof AccessError || error instanceof CompetitionError) {
@@ -30,7 +31,11 @@ export function errorResponse(error: unknown) {
     message = error.message;
   } else if (error instanceof z.ZodError) {
     status = 400;
-    message = error.issues.map((issue) => issue.message).join(' ');
+    message = kind
+      ? competitionFormIssues(error, kind)
+          .map((issue) => `${issue.label}: ${issue.message}`)
+          .join(' ')
+      : error.issues.map((issue) => issue.message).join(' ');
   } else if (error instanceof SyntaxError) {
     status = 400;
     message = 'Controlla i dati inseriti';
@@ -39,7 +44,9 @@ export function errorResponse(error: unknown) {
     error.code === 'P2002'
   ) {
     status = 409;
-    message = 'Slug o codice già utilizzato in questo contesto';
+    message = kind
+      ? 'Slug già utilizzato: scegli un identificativo diverso per questo concorso o questa edizione.'
+      : 'Il dato è già presente. Ricarica la pagina prima di riprovare.';
   }
   return json({ message, requestId: crypto.randomUUID() }, status);
 }

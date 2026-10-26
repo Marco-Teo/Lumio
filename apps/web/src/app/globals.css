@@ -169,6 +169,25 @@ fieldset {
   padding: 0;
   font-weight: 600;
 }
+.platform fieldset > legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  font-weight: 600;
+}
+.document-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.platform .checkbox-label input {
+  width: auto;
+  flex-shrink: 0;
+}
 select:disabled {
   color: #596367;
   background: #e4e7e6;
@@ -188,6 +207,32 @@ select:disabled {
 .edition-row {
   padding-top: 0.5rem;
   border-top: 1px solid #ced4d3;
+}
+.publication-feedback {
+  padding: 0.75rem 1rem;
+  border-left: 3px solid #326d90;
+  background: #e6edeb;
+  border-radius: 0.25rem;
+}
+.form-field {
+  display: grid;
+  gap: 0.4rem;
+}
+.field-error {
+  color: #8f2424;
+  line-height: 1.5;
+}
+.form-error-summary {
+  padding: 0.75rem 1rem;
+  border: 1px solid #a33838;
+  border-radius: 0.4rem;
+  background: #fff2ef;
+}
+.form-error-summary a {
+  color: #8f2424;
+}
+[aria-invalid='true'] {
+  border-color: #a33838;
 }
 .format-options {
   display: flex;
@@ -255,31 +300,4 @@ pre {
 }
 .field-help:not([data-dismissed='true']):focus-within .field-help-tooltip {
   visibility: visible;
-}
-
-.platform fieldset > legend {
-  float: left;
-  width: 100%;
-  padding: 0;
-  font-weight: 600;
-}
-.document-text {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.checkbox-label {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-}
-.platform .checkbox-label input {
-  width: auto;
-  flex-shrink: 0;
-}
-
-.publication-feedback {
-  padding: 0.75rem 1rem;
-  border-left: 3px solid #326d90;
-  background: #e6edeb;
-  border-radius: 0.25rem;
 }

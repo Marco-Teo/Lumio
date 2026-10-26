@@ -14,7 +14,7 @@ export async function GET(request: Request, { params }: Context) {
     const { organizationId } = await params;
     return json(await listCompetitions(actor, organizationId));
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(error, 'contest');
   }
 }
 export async function POST(request: Request, { params }: Context) {
@@ -26,6 +26,6 @@ export async function POST(request: Request, { params }: Context) {
       201,
     );
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(error, 'contest');
   }
 }

@@ -10,6 +10,11 @@ import {
   type EditionConfiguration,
 } from '../../../lib/competitions';
 import { EditionForm } from './edition-form';
+import { FormField, FormFeedback, FormErrorSummary } from '../form-feedback';
+import {
+  competitionFormIssues,
+  type CompetitionFormIssue,
+} from '../../../lib/competition-errors';
 
 type EditionRow = {
   id: string;
@@ -71,6 +76,9 @@ export function CompetitionConsole({
   const [contests, setContests] = useState<ContestRow[]>([]);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [contestErrors, setContestErrors] = useState<CompetitionFormIssue[]>(
+    [],
+  );
   const [editionNotice, setEditionNotice] = useState<{
     id: string;
     text: string;
@@ -121,13 +129,24 @@ export function CompetitionConsole({
       setBusy(false);
     }
   }
+  function changeContest(field: keyof ContestInput, value: string) {
+    const data = { ...editingContest.data, [field]: value };
+    setEditingContest({ ...editingContest, data });
+    if (contestErrors.length) {
+      const parsed = contestSchema.safeParse(data);
+      setContestErrors(
+        parsed.success ? [] : competitionFormIssues(parsed.error, 'contest'),
+      );
+    }
+  }
   async function saveContest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const parsed = contestSchema.safeParse(editingContest.data);
     if (!parsed.success) {
-      setMessage('Controlla nome e slug del concorso.');
+      setContestErrors(competitionFormIssues(parsed.error, 'contest'));
       return;
     }
+    setContestErrors([]);
     await perform(async () => {
       await call(editingContest.id ? `${base}/${editingContest.id}` : base, {
         method: editingContest.id ? 'PATCH' : 'POST',
@@ -145,65 +164,50 @@ export function CompetitionConsole({
       </p>
       <section>
         <h2>{editingContest.id ? 'Modifica concorso' : 'Nuovo concorso'}</h2>
-        <form onSubmit={saveContest}>
-          <label>
-            Nome concorso
-            <input
-              required
-              minLength={2}
-              maxLength={120}
-              value={editingContest.data.name}
-              onChange={(e) =>
-                setEditingContest({
-                  ...editingContest,
-                  data: { ...editingContest.data, name: e.target.value },
-                })
-              }
-            />
-          </label>
-          <label>
-            Slug concorso
-            <input
-              required
-              minLength={2}
-              maxLength={80}
-              pattern="[a-z0-9]+(-[a-z0-9]+)*"
-              value={editingContest.data.slug}
-              onChange={(e) =>
-                setEditingContest({
-                  ...editingContest,
-                  data: { ...editingContest.data, slug: e.target.value },
-                })
-              }
-            />
-          </label>
-          <label>
-            Descrizione concorso
-            <textarea
-              maxLength={5000}
-              value={editingContest.data.description}
-              onChange={(e) =>
-                setEditingContest({
-                  ...editingContest,
-                  data: { ...editingContest.data, description: e.target.value },
-                })
-              }
-            />
-          </label>
-          <button disabled={busy}>Salva concorso</button>
-          {editingContest.id && (
-            <button
-              type="button"
-              onClick={() =>
-                setEditingContest({
-                  data: { name: '', slug: '', description: '' },
-                })
-              }
-            >
-              Annulla modifica concorso
-            </button>
-          )}
-        </form>
+        <FormFeedback issues={contestErrors}>
+          <form onSubmit={saveContest} noValidate>
+            <FormErrorSummary />
+            <FormField label="Nome concorso" path="name">
+              <input
+                required
+                minLength={2}
+                maxLength={120}
+                value={editingContest.data.name}
+                onChange={(e) => changeContest('name', e.target.value)}
+              />
+            </FormField>
+            <FormField label="Slug concorso" path="slug">
+              <input
+                required
+                minLength={2}
+                maxLength={80}
+                pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                value={editingContest.data.slug}
+                onChange={(e) => changeContest('slug', e.target.value)}
+              />
+            </FormField>
+            <FormField label="Descrizione concorso" path="description">
+              <textarea
+                maxLength={5000}
+                value={editingContest.data.description}
+                onChange={(e) => changeContest('description', e.target.value)}
+              />
+            </FormField>
+            <button disabled={busy}>Salva concorso</button>
+            {editingContest.id && (
+              <button
+                type="button"
+                onClick={() =>
+                  setEditingContest({
+                    data: { name: '', slug: '', description: '' },
+                  })
+                }
+              >
+                Annulla modifica concorso
+              </button>
+            )}
+          </form>
+        </FormFeedback>
       </section>
       <p role="status">{message}</p>
       <section>

@@ -38,7 +38,8 @@ export const sectionSchema = z
     if (section.minImages > section.maxImages)
       ctx.addIssue({
         code: 'custom',
-        message: 'Il minimo immagini supera il massimo.',
+        path: ['maxImages'],
+        message: 'Il massimo immagini deve essere almeno uguale al minimo.',
       });
     if (
       section.type === 'single' &&
@@ -46,6 +47,7 @@ export const sectionSchema = z
     )
       ctx.addIssue({
         code: 'custom',
+        path: ['type'],
         message: 'Una fotografia singola contiene una sola immagine.',
       });
   });
@@ -90,48 +92,73 @@ export const editionSchema = z
   })
   .strict()
   .superRefine((edition, ctx) => {
-    const fail = (message: string) => ctx.addIssue({ code: 'custom', message });
-    if (
-      new Set(edition.sections.map((s) => s.code)).size !==
-      edition.sections.length
-    )
-      fail('I codici delle sezioni devono essere unici.');
-    if (
-      edition.paymentMode === 'free' &&
-      edition.sections.some((s) => s.feeCents > 0)
-    )
-      fail('Una edizione gratuita non può avere quote di sezione.');
-    const dates = [
-      edition.opensAt,
-      edition.closesAt,
-      edition.juryAt,
-      edition.awardsAt,
-    ].filter((date): date is string => date !== null);
-    if (dates.some((date, index) => index > 0 && date <= dates[index - 1]))
-      fail(
-        'Le date devono seguire l’ordine apertura, chiusura, giuria, premiazione.',
-      );
+    const fail = (message: string, path: Array<string | number>) =>
+      ctx.addIssue({ code: 'custom', message, path });
+    edition.sections.forEach((section, index) => {
+      if (
+        edition.sections.some(
+          (other, otherIndex) =>
+            otherIndex < index && other.code === section.code,
+        )
+      )
+        fail(
+          'Questo codice è già usato da un’altra sezione. Scegli un codice diverso.',
+          ['sections', index, 'code'],
+        );
+      if (edition.paymentMode === 'free' && section.feeCents > 0)
+        fail(
+          'Imposta la quota a 0 per un’edizione gratuita, oppure scegli il pagamento manuale.',
+          ['sections', index, 'feeCents'],
+        );
+    });
+    const dateFields = ['opensAt', 'closesAt', 'juryAt', 'awardsAt'] as const;
+    const dateLabels = {
+      opensAt: 'Apertura iscrizioni',
+      closesAt: 'Chiusura iscrizioni',
+      juryAt: 'Data giuria',
+      awardsAt: 'Data premiazione',
+    };
+    let previous: (typeof dateFields)[number] | undefined;
+    for (const key of dateFields) {
+      const value = edition[key];
+      if (!value) continue;
+      if (previous && value <= edition[previous]!)
+        fail(
+          `Scegli una data e un’ora successive a «${dateLabels[previous]}».`,
+          [key],
+        );
+      previous = key;
+    }
     const rules = edition.imageRules;
     if (
       rules.maxShortEdge &&
       rules.maxLongEdge &&
       rules.maxShortEdge > rules.maxLongEdge
     )
-      fail('Il lato corto massimo supera il lato lungo massimo.');
+      fail('Il lato corto massimo non può superare il lato lungo massimo.', [
+        'imageRules',
+        'maxShortEdge',
+      ]);
     if (
       rules.maxLongEdge &&
       [rules.minWidth, rules.minHeight].some(
         (min) => min !== null && min > rules.maxLongEdge!,
       )
     )
-      fail('Le dimensioni minime superano il lato lungo massimo.');
+      fail(
+        'Il lato lungo massimo deve essere almeno uguale alle dimensioni minime impostate.',
+        ['imageRules', 'maxLongEdge'],
+      );
     if (
       rules.maxShortEdge &&
       rules.minWidth &&
       rules.minHeight &&
       Math.min(rules.minWidth, rules.minHeight) > rules.maxShortEdge
     )
-      fail('Le dimensioni minime superano il lato corto massimo.');
+      fail(
+        'Il lato corto massimo è inferiore alle dimensioni minime impostate.',
+        ['imageRules', 'maxShortEdge'],
+      );
   });
 
 export type EditionConfiguration = z.infer<typeof editionSchema>;

@@ -127,6 +127,17 @@ test('organizer configures, versions, publishes and archives an edition', async 
         )
       ).status(),
     ).toBe(403);
+    await page.getByLabel('Nome concorso').fill('A');
+    await page.getByLabel('Slug concorso').fill('Non valido');
+    await page.getByRole('button', { name: 'Salva concorso' }).click();
+    await expect(
+      page.getByRole('alert', { name: 'Errori di compilazione' }),
+    ).toContainText('Nome concorso: Inserisci almeno 2 caratteri.');
+    await expect(
+      page.getByRole('alert', { name: 'Errori di compilazione' }),
+    ).toContainText('Slug concorso: Usa da 2 a 80 caratteri');
+    await page.getByRole('link', { name: /^Slug concorso:/ }).click();
+    await expect(page.getByLabel('Slug concorso')).toBeFocused();
     await page.getByLabel('Nome concorso').fill('Concorso annuale');
     await page.getByLabel('Slug concorso').fill('concorso-annuale');
     await page
@@ -135,6 +146,14 @@ test('organizer configures, versions, publishes and archives an edition', async 
     await page.getByRole('button', { name: 'Salva concorso' }).click();
     await expect(page.getByRole('status')).toContainText('Concorso salvato');
     await page.getByRole('button', { name: 'Nuova edizione' }).click();
+    await page.getByRole('button', { name: 'Salva bozza' }).click();
+    await expect(
+      page.getByRole('alert', { name: 'Errori di compilazione' }),
+    ).toContainText('Nome edizione:');
+    await expect(page.getByLabel('Nome edizione')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
     await expect(page.getByLabel('Valuta')).toBeDisabled();
     await page.getByLabel('Modalità pagamento').selectOption('manual');
     await expect(page.getByLabel('Valuta')).toBeEnabled();
@@ -189,6 +208,28 @@ test('organizer configures, versions, publishes and archives an edition', async 
     await second.getByLabel('Tipo opera').selectOption('portfolio');
     await second.getByLabel('Minimo immagini per opera').fill('3');
     await second.getByLabel('Massimo immagini per opera').fill('8');
+    await second.getByLabel('Codice sezione').fill('L');
+    await page.getByLabel('Data giuria').fill('2027-01-15T10:00');
+    await page.getByRole('button', { name: 'Salva bozza' }).click();
+    await expect(
+      page.getByRole('alert', { name: 'Errori di compilazione' }),
+    ).toContainText('Sezione 2 · Codice sezione: Questo codice è già usato');
+    await expect(
+      page.getByRole('alert', { name: 'Errori di compilazione' }),
+    ).toContainText(
+      'Data giuria: Scegli una data e un’ora successive a «Chiusura iscrizioni»',
+    );
+    await second.getByLabel('Codice sezione').fill('P');
+    await page.getByLabel('Data giuria').fill('2027-03-01T10:00');
+    await first.getByLabel('Quota sezione').fill('500');
+    await page.getByRole('button', { name: 'Salva bozza' }).click();
+    await expect(
+      page.getByRole('alert', { name: 'Errori di compilazione' }),
+    ).toContainText('Sezione 1 · Quota sezione: Imposta la quota a 0');
+    await first.getByLabel('Quota sezione').fill('0');
+    await expect(
+      page.getByRole('alert', { name: 'Errori di compilazione' }),
+    ).toHaveCount(0);
     await second.getByRole('button', { name: 'Sposta su' }).click();
     await expect(first.getByLabel('Nome sezione')).toHaveValue('Racconto');
     await page.getByRole('button', { name: 'Salva bozza' }).click();

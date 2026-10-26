@@ -28,7 +28,7 @@ export async function PUT(request: Request, { params }: Context) {
       ),
     );
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(error, 'edition');
   }
 }
 export async function PATCH(request: Request, { params }: Context) {
@@ -45,6 +45,6 @@ export async function PATCH(request: Request, { params }: Context) {
       ),
     );
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(error, 'edition');
   }
 }

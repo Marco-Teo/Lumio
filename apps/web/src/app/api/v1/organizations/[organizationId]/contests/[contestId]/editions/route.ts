@@ -18,6 +18,6 @@ export async function POST(
       201,
     );
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(error, 'edition');
   }
 }

@@ -17,6 +17,6 @@ export async function PATCH(
       await saveContest(actor, organizationId, await request.json(), contestId),
     );
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(error, 'contest');
   }
 }
