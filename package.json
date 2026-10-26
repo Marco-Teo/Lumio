@@ -18,7 +18,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "test:e2e": "pnpm build && node --env-file-if-exists=.env node_modules/@playwright/test/cli.js test",
+    "test:e2e": "node --import tsx scripts/testing/run.ts e2e",
+    "env:test": "node --import tsx scripts/configure-test.ts",
+    "test:setup": "node --import tsx scripts/testing/run.ts setup",
     "db:generate": "pnpm --filter @lumio/database generate",
     "env:local": "node --import tsx scripts/configure-local.ts && pnpm env:worker",
     "env:worker": "node --import tsx scripts/configure-worker.ts",
@@ -28,7 +30,7 @@
     "db:provision": "node --env-file-if-exists=.env --import tsx scripts/provision-database.ts",
     "db:migrate": "pnpm --filter @lumio/database migrate",
     "db:seed": "node --env-file-if-exists=.env --import tsx scripts/seed-development.ts",
-    "test:integration": "node --env-file-if-exists=.env --import tsx --test tests/integration/*.test.ts"
+    "test:integration": "node --import tsx scripts/testing/run.ts integration"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

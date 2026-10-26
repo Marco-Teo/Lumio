@@ -26,8 +26,8 @@ jobs:
       mailpit:
         image: axllent/mailpit:v1.31.6
         ports:
-          - 1025:1025
-          - 8025:8025
+          - 1026:1025
+          - 8026:8025
       redis:
         image: redis:8.10.2
         ports:
@@ -66,6 +66,8 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test
+      - run: pnpm env:test
+      - run: pnpm test:setup
       - run: pnpm test:integration
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e

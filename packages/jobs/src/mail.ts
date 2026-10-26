@@ -13,6 +13,16 @@ export async function sendEmail(
   message: EmailMessage,
   config: MailConfiguration,
 ) {
+  if (
+    process.env.LUMIO_TEST_MODE === '1' &&
+    (config.transport !== 'smtp' ||
+      config.host !== '127.0.0.1' ||
+      config.port !== 1026 ||
+      !/^[^@\s]+@example\.invalid$/.test(message.to))
+  )
+    throw new Error(
+      'Test email delivery is restricted to isolated Mailpit and synthetic recipients',
+    );
   if (config.transport === 'smtp') {
     if (!['127.0.0.1', 'localhost', 'mailpit'].includes(config.host))
       throw new Error('SMTP is restricted to the local mail catcher');

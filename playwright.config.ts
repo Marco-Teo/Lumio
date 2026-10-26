@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import './scripts/testing/preflight';
 
 export default defineConfig({
   testDir: './tests/e2e',

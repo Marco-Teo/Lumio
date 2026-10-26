@@ -12,7 +12,7 @@ export async function emailLink(
     .poll(
       async () => {
         const search = await request.get(
-          `${process.env.MAILPIT_URL ?? 'http://127.0.0.1:8025'}/api/v1/search`,
+          `${process.env.MAILPIT_URL}/api/v1/search`,
           { params: { query: `to:${email}` } },
         );
         const data = (await search.json()) as {
@@ -21,7 +21,7 @@ export async function emailLink(
         for (const item of data.messages) {
           const message = (await (
             await request.get(
-              `${process.env.MAILPIT_URL ?? 'http://127.0.0.1:8025'}/api/v1/message/${item.ID}`,
+              `${process.env.MAILPIT_URL}/api/v1/message/${item.ID}`,
             )
           ).json()) as { Text: string };
           const found = message.Text.match(/https?:\/\/[^\s]+/g)?.find(

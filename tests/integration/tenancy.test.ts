@@ -1,3 +1,4 @@
+import '../../scripts/testing/preflight';
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createDatabase } from '@lumio/database';

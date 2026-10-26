@@ -1,3 +1,4 @@
+import '../../scripts/testing/preflight';
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
@@ -186,7 +187,7 @@ test('platform provisioning and asynchronous recovery', async (t) => {
             await sendEmail(message, {
               transport: 'smtp',
               host: '127.0.0.1',
-              port: 1025,
+              port: Number(process.env.SMTP_PORT),
               from: 'lumio@example.invalid',
               region: 'eu-central-1',
             });
@@ -355,7 +356,7 @@ test('platform provisioning and asynchronous recovery', async (t) => {
           await sendEmail(message, {
             transport: 'smtp',
             host: '127.0.0.1',
-            port: 1025,
+            port: Number(process.env.SMTP_PORT),
             from: 'lumio@example.invalid',
             region: 'eu-central-1',
           });

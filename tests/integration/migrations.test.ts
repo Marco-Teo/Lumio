@@ -1,3 +1,4 @@
+import '../../scripts/testing/preflight';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Client } from 'pg';
