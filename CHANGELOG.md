@@ -1,6 +1,6 @@
 # Stato di avanzamento Lumio
 
-Questo registro descrive il lavoro fino a F1. Le funzionalità future sono indicate separatamente.
+Questo registro descrive il lavoro fino a F2. Le funzionalità future sono indicate separatamente.
 
 ## F0.1 — Repository eseguibile e controlli automatici
 
@@ -50,8 +50,32 @@ Verifiche locali F1: lint, formatting check, typecheck, 17 unit test, 32 test di
 - Disabilitata e resa grigia la valuta per le edizioni gratuite; torna modificabile con pagamento manuale. Verificato nel browser anche il mantenimento della scelta precedente.
 - Verificata l'origine delle email in Mailpit: le email aggiuntive, inclusi i recuperi password, provenivano dalle fixture sintetiche dei test; nessun invito era rimasto in coda.
 
-Prima del rilascio resta da isolare anche la casella Mailpit delle prove manuali da quella dei test locali e aggiungere blocchi preventivi alle suite contro database o trasporti email di produzione. Queste protezioni ulteriori sono pianificate, non implementate. I test attuali vanno eseguiti esclusivamente su ambienti locali/CI sintetici come descritto nel README.
+La separazione delle email e i blocchi preventivi, inizialmente pianificati dopo F1, sono ora implementati come descritto sotto.
+
+## Isolamento test — completato
+
+- Database dedicato lumio_test, Redis DB 15 e Mailpit dedicata sulle porte 1026/8026.
+- Configurazione .env.test.local ignorata da Git, generata senza sovrascrivere file esistenti.
+- Runner e preflight rifiutano produzione, destinazioni remote e servizi delle prove manuali. Il trasporto test rifiuta SES e destinatari reali.
+- Bootstrap e CI allineati. Verificato che gli E2E aggiungano messaggi solo alla casella di test, lasciando invariata quella manuale.
+
+## F2 — Profilo partecipante e bozze di iscrizione
+
+- Profilo personale riutilizzabile e pagina pubblica delle edizioni pubblicate di organizzazioni attive.
+- Inizio iscrizione con email verificata, accettazione del regolamento e lettura privacy nella versione pubblicata, entro le date configurate.
+- Snapshot indipendenti di profilo e configurazione, timestamp documenti bloccati e audit delle modifiche.
+- Una sola iscrizione per persona/edizione anche con richieste concorrenti; controllo della versione per i salvataggi.
+- Stati derivati profile_incomplete / entries_incomplete, consultazione personale e lista delle ultime 100 bozze per gli amministratori del tenant con MFA.
+- Chiusura, archiviazione e sospensione bloccano le modifiche; la lettura dei propri dati/documenti resta disponibile.
+
+Verifiche locali: 37 unit test, 40 test di integrazione, 7 E2E, lint, formatting check, typecheck e build. Le migrazioni sono provate da database vuoto. Nessuna nuova dipendenza, risorsa cloud o invio email reale.
+
+La console ora mostra i requisiti mancanti accanto a ogni bozza e la conferma di pubblicazione accanto all'edizione, con link alla pagina pubblica. Il test browser di pubblicazione verifica anche status, publishedAt e audit persistiti nel database e navigazione dal catalogo pubblico.
+
+I moduli concorso/edizione mostrano errori in italiano accanto ai campi, con riepilogo navigabile da tastiera. Gli errori specificano sezione, formato dello slug/codice, ordine delle date, limiti immagini e quote incompatibili con la gratuità. Quattro nuovi test unitari (41 totali) e il test browser verificano errore, correzione e salvataggio.
+
+La bozza ora mostra conferma di ricezione, organizzazione destinataria, contatto e prossimo passo, distinguendola dalla conferma definitiva. Le nuove iscrizioni accodano atomicamente una ricevuta email cifrata, senza duplicare eventi per richieste ripetute. Il worker la consegna con retry; la pagina mostra lo stato. Nessun invio retroattivo. Aggiunti test di ricevuta, retry, deduplicazione e rollback (42 test di integrazione totali); suite browser estesa alla consegna in Mailpit isolata.
 
 ## Prossime funzionalità — non implementate
 
-Non sono ancora disponibili iscrizioni dei partecipanti, caricamento fotografie, revisioni fotografiche, anonimizzazione delle immagini, giurie o pagamenti operativi. La pubblicazione F1 non crea una pagina pubblica né apre iscrizioni. I principi architetturali documentati per queste funzionalità restano requisiti per le fasi successive.
+Non sono ancora disponibili opere, caricamento fotografie, revisioni fotografiche, anonimizzazione, giurie, pagamenti o conferma definitiva dell'iscrizione. Esistono bozze di iscrizione con dati e documenti versionati. Retention, portabilità, cancellazione/anonimizzazione e paginazione completa richiedono lavoro ulteriore prima del pilota. I principi architetturali approvati restano invariati.

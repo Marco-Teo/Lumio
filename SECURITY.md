@@ -1,6 +1,6 @@
 # Sicurezza
 
-## Implementato fino a F0.3
+## Implementato fino a F2
 
 Autenticazione Better Auth con password di almeno 12 caratteri, hashing della libreria, verifica email, reset con token a scadenza, revoca delle sessioni al reset e logout. Cookie HttpOnly/SameSite e Secure con origine HTTPS. Nessuna cookie cache per sessioni revocabili.
 
@@ -22,7 +22,7 @@ MFA non è ancora disattivabile dalla UI; recupero accesso tramite i codici forn
 
 ## Pianificato
 
-Storage privato, signed URL, originali immutabili, limiti decoder, worker confinato, pipeline e anonimizzazione. Consensi, retention, portabilità dati e cancellazione/anonimizzazione devono essere implementati con i flussi pertinenti prima del pilota con partecipanti reali. Questa foundation non certifica conformità GDPR.
+Storage privato, signed URL, originali immutabili, limiti decoder, worker confinato, pipeline e anonimizzazione. F2 registra l'accettazione del regolamento e la lettura della privacy versionati; retention, portabilità e cancellazione/anonimizzazione restano da completare prima del pilota con partecipanti reali.
 
 ## Inviti e privilegi piattaforma
 
@@ -41,3 +41,13 @@ Le API tenant richiedono sessione verificata, MFA, membership admin e organizzaz
 I documenti sono testo semplice, renderizzato con escaping React, senza HTML arbitrario. Nessun upload documento o immagine in F1. La configurazione immagine non sostituisce i controlli reali sul file che verranno sviluppati nella pipeline. Nessun dato identificativo dei fotografi è stato aggiunto.
 
 Versione attesa e lock impediscono salvataggi persi o modifiche durante la pubblicazione. Audit e revisioni sono append-only per il runtime. Il proprietario migrazioni mantiene facoltà di manutenzione: le garanzie non proteggono da un operatore con tali credenziali.
+
+## Partecipanti e protezione delle verifiche — F2
+
+Il partecipante usa una sessione con email verificata, senza obbligo di MFA. Le mutazioni controllano Origin e input strict; personId, email dell'iscrizione, tenant, documenti e timestamp provengono dal server. RLS richiede identità proprietaria e contesto tenant per le iscrizioni. Gli admin leggono solo gli snapshot delle proprie organizzazioni attive, con MFA. Le funzioni del catalogo non espongono bozze, autori delle revisioni o dati personali.
+
+Il runner rifiuta NODE_ENV=production, database remoti o diversi da lumio_test, SMTP diverso da 127.0.0.1:1026, SES, Mailpit manuale e Redis fuori dal DB 15. Il preflight è caricato anche dalle suite di integrazione e dalla configurazione Playwright per bloccare l'avvio diretto con configurazioni errate. Il trasporto email in modalità test rifiuta destinatari diversi da @example.invalid prima di creare una connessione SMTP/SES.
+
+Le verifiche rimangono un'attività operativa locale/CI: non distribuire .env.test.local o gli strumenti di bootstrap privilegiati come configurazione dei servizi di produzione. Le credenziali dei ruoli database restano fidate; i controlli non proteggono da chi modifichi intenzionalmente runner o codice.
+
+La ricevuta di bozza usa destinatario verificato della sessione e riferimenti server; il corpo non contiene anagrafica, password o token di accesso. Il link richiede login come proprietario. Il payload outbox è cifrato; Redis e log conservano solo il riferimento evento. L'email di contatto dell'organizzazione è restituita dal dettaglio dell'edizione pubblicata e mostrata nel riepilogo dell'iscrizione.

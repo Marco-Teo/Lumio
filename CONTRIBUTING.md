@@ -2,7 +2,7 @@
 
 Usare Node 24.22.0 e pnpm 12.14.0. Seguire il [README](README.md) per ambiente locale, Docker e migrazioni.
 
-Prima del commit: pnpm lint, pnpm format:check, pnpm typecheck, pnpm test, pnpm test:integration, pnpm test:e2e e pnpm build. Test integrazione ed E2E richiedono PostgreSQL/Redis/Mailpit e dati sintetici. Non puntarli a produzione.
+Prima del commit: pnpm lint, pnpm format:check, pnpm typecheck, pnpm test, pnpm test:integration, pnpm test:e2e e pnpm build. Usare env:test e test:setup per il database lumio_test e la Mailpit dedicata; i runner rifiutano configurazioni non isolate.
 
 TypeScript strict; nessun any ingiustificato. Dipendenze dirette con versione esatta, lockfile aggiornato e peer dependency compatibili. pnpm format applica lo stile, format:check non modifica file.
 
@@ -18,6 +18,8 @@ Configurare nome/email autore solo nel repository. Nessun segreto, file ambiente
 
 F0.3 termina con console, inviti e worker verificati. F1 aggiunge la configurazione delle competizioni. Iscrizioni, immagini, pagamenti e giuria operativi richiedono milestone successive. Documentare sempre separatamente quanto è operativo, verificato localmente o soltanto predisposto.
 
-I test di integrazione ed E2E sull'outbox devono essere sequenziali, senza worker locale parallelo. Usare solo identità sintetiche e pulire i record del test con identificatori noti. Non attribuire privilegi piattaforma ad account reali dai seed. Il comando platform:grant-admin richiede sempre un'email verificata esplicita e produce audit.
+I test di integrazione ed E2E sull'outbox devono essere sequenziali tra loro. Il worker delle prove manuali può restare attivo grazie alla separazione database/Redis/email. Usare solo identità @example.invalid e pulire i record con identificatori noti. Non attribuire privilegi piattaforma ad account reali dai seed. Il comando platform:grant-admin richiede sempre un'email verificata esplicita e produce audit.
 
 Per F1, ogni modifica deve preservare snapshot, vincoli tenant e state machine. I test coprono input non valido, pubblicazione incompleta, scritture concorrenti, immutabilità, sospensione e accesso dell'organizzatore da browser. Le fixture auth dei test business possono usare la vera libreria auth lato server per non consumare il rate limit HTTP condiviso; login e MFA HTTP restano coperti nei test auth e piattaforma.
+
+Per F2 mantenere separati profilo globale e snapshot dell'iscrizione; non aggiornare automaticamente uno dall'altro. I riferimenti ai documenti accettati restano immutabili per il runtime. Non aggiungere opere, fotografie, pagamenti o stati di conferma prima dei relativi moduli. Provare chiusura temporale, utente estraneo, accesso admin senza MFA, concorrenza e vincoli tenant.

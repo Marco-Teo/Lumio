@@ -1,6 +1,6 @@
 # Architettura
 
-## Implementato fino a F1
+## Implementato fino a F2
 
 Monorepo pnpm con apps/web (Next.js App Router, React, TypeScript strict) e due package condivisi: packages/database e packages/jobs. Il confine database esiste perché schema e client sono consumati dal web, dalle migrazioni e dai comandi operativi.
 
@@ -16,7 +16,7 @@ withOrganization imposta utente e organizzazione in una transazione, verifica me
 
 La console /platform e il worker sono implementati. packages/jobs condivide contratti, protezione payload e trasporto email, effettivamente usati da web e worker. Il rate limiting attuale è in memoria e il deployment è limitato a una replica; prima di scalare occorre uno store condiviso.
 
-Il concorso permanente con più edizioni è implementato in F1. Restano invarianti per i moduli futuri: Account != Persona != Iscrizione != Opera != Fotografia; dati iscrizione locali; originali immutabili; revisioni fotografiche; pipeline asincrona idempotente; anonimizzazione ed export giuria separato da quello amministrativo.
+Concorso permanente e più edizioni sono implementati in F1; Account, Persona e Iscrizione restano entità distinte in F2, con dati iscrizione locali. Restano requisiti per i moduli futuri Opera e Fotografia distinte, originali immutabili, revisioni fotografiche, pipeline asincrona idempotente, anonimizzazione ed export giuria separato da quello amministrativo.
 
 ## Pipeline di provisioning
 
@@ -36,6 +36,20 @@ Il modulo server competitions vive nel web, senza nuovi package. Contest è il c
 
 Scelta iniziale: versionare l'intera configurazione insieme, invece di introdurre cataloghi separati per documenti e regole. Le revisioni restano immutabili per il runtime. Le sezioni di bozza sono sostituite atomicamente al salvataggio; i loro ID non sono ancora usati da iscrizioni o opere. Prima di aggiungere tali relazioni bisognerà preservare gli identificatori o legarle alla configurazione pubblicata.
 
-State machine implementata: draft → published → archived. La pubblicazione congela la versione corrente, senza pagina pubblica o apertura iscrizioni. registrations_open/closed, jury e results richiedono i moduli futuri. Pagamento manuale, valuta e metodo di voto sono solo configurazioni.
+State machine persistita: draft → published → archived. Da F2, l'apertura delle bozze di iscrizione è derivata dalle date UTC della configurazione pubblicata, con intervallo apertura inclusa / chiusura esclusa; non sono introdotti job che modificano lo stato dell'edizione. jury e results richiedono i moduli futuri. Pagamento manuale, valuta e metodo di voto restano configurazioni.
 
 Lock organizzazione condiviso e poi lock edizione serializzano salvataggio/pubblicazione con sospensione. La versione attesa impedisce aggiornamenti persi. L'elenco attuale carica concorsi, edizioni e revisioni dell'organizzazione senza paginazione: da paginare prima di gestire grandi archivi. Nessuna nuova infrastruttura.
+
+## Profilo e iscrizioni — F2
+
+Il modulo participants vive nel web. Person conserva il profilo personale riutilizzabile e una versione per gli aggiornamenti concorrenti. Registration appartiene a una persona e a una revisione di edizione dello stesso tenant; conserva snapshot indipendenti di profilo/configurazione e timestamp di accettazione del regolamento e lettura privacy. RegistrationEvent registra creazione e modifica con before/after nella stessa transazione.
+
+Una sola iscrizione per persona/edizione, anche con richieste concorrenti. Lock organizzazione → edizione → persona e versione attesa proteggono finestra temporale, sospensione, archiviazione e aggiornamenti persi. Gli stati iniziali derivati sono profile_incomplete ed entries_incomplete: non anticipano opere, pagamenti o conferma definitiva.
+
+Il catalogo pubblico e la discovery delle proprie iscrizioni usano capability SQL ristrette, senza accesso generico ai dati protetti. L'organizzatore consulta esclusivamente gli snapshot delle iscrizioni del proprio tenant; non accede al profilo globale della persona.
+
+La creazione della bozza inserisce anche un evento outbox registration.started nella stessa transazione. Il payload minimo della ricevuta (destinatario, nomi, contatto e riferimento) è cifrato con JOB_PAYLOAD_KEY; il worker costruisce il link e invia senza leggere le tabelle delle iscrizioni. Una richiesta ripetuta restituisce la stessa bozza senza nuovi eventi. Retry e limite exactly-once SMTP restano quelli del provisioning. Nessun invio retroattivo per iscrizioni già esistenti.
+
+## Isolamento delle verifiche
+
+I runner caricano soltanto .env.test.local, validano destinazioni locali note e usano lumio_test, Redis DB 15 e Mailpit SMTP 1026 / HTTP 8026. La CI esegue lo stesso bootstrap. Web e worker manuali restano su lumio, Redis DB 0 e Mailpit 1025/8025. Non sono necessari nuovi package o servizi cloud.

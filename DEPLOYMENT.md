@@ -31,7 +31,7 @@ Riferimenti: [Blueprint](https://render.com/docs/blueprint-spec), [backup](https
 
 pnpm worker carica apps/worker/.env.local; non carica il file privilegiato .env. Health locale su /health della porta WORKER_HEALTH_PORT (default 3103), senza esposizione pubblica. SIGINT/SIGTERM interrompono il polling e attendono i job attivi prima di chiudere connessioni e database.
 
-Per l'upgrade F0.2 eseguire env:worker prima di db:provision e db:migrate; poi riavviare web e worker. Redis Compose usa AOF e noeviction. Fermare il worker locale prima della suite: Playwright avvia un worker separato sulla porta health 3102 e lo chiude al termine.
+Per l'upgrade F0.2 eseguire env:worker prima di db:provision e db:migrate; poi riavviare web e worker. Redis Compose usa AOF e noeviction. Playwright avvia il worker di test sulla health 3102 e lo chiude al termine. Il worker manuale può restare acceso dopo la configurazione isolata dei test: usa database e Redis diversi.
 
 Il Blueprint prepara un Key Value privato con noeviction/persistenza e un background worker nella stessa regione. Prima dell'attivazione configurare WORKER_DATABASE_URL usando soltanto lumio_worker e la stessa APP_URL del web. Impostare nei due servizi lo stesso JOB_PAYLOAD_KEY di 64 caratteri hex casuali, attraverso il secret manager del fornitore. Nessun secret auth o credenziale admin/migrazioni deve essere configurato nel worker.
 
@@ -42,3 +42,9 @@ Restano da verificare sull'account remoto: Blueprint, privilegi del provider, co
 ## Upgrade F1
 
 Nessun servizio o segreto aggiuntivo. Applicare `pnpm db:migrate` con la credenziale migrator, generare il client con `pnpm db:generate`, eseguire i controlli e distribuire/riavviare il web. Le nuove tabelle e policy non richiedono credenziali privilegiate al web o al worker. Nessuna risorsa cloud è stata attivata per questa fase.
+
+## Upgrade F2 e test isolati
+
+F2 richiede la settima e l'ottava migrazione, poi generazione del client e riavvio di web e worker. Il worker aggiornato deve gestire registration.started prima di accettare nuove iscrizioni. Nessuna nuova dipendenza o servizio di produzione. Il catalogo pubblico mostra solo edizioni pubblicate di organizzazioni attive; la data UTC determina l'accesso alle bozze di iscrizione.
+
+Per i test locali usare `pnpm env:test`, avviare mailpit-test e poi `pnpm test:setup`. Test SMTP/HTTP su 1026/8026, database lumio_test, Redis DB 15. Non configurare LUMIO_TEST_MODE né distribuire .env.test.local nei servizi remoti. La CI usa gli stessi runner e una Mailpit dedicata; non contiene credenziali SES o destinatari reali.

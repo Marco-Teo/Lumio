@@ -33,3 +33,9 @@ L'outbox è un piano operativo trasversale, accessibile solo alla piattaforma au
 La discovery mostra esclusivamente le membership della propria identità per scegliere le organizzazioni amministrate. Ogni apertura e mutazione della configurazione verifica membership admin, organizzazione attiva, email verificata e MFA.
 
 La funzione SQL can_manage_competitions applica gli stessi confini alle quattro nuove tabelle: servono contesto tenant e identità membro con requisiti di sicurezza presenti nel database. Il privilegio Super Admin non sostituisce la membership. Il worker non riceve accesso alle competizioni. Test dedicati coprono contesto assente/errato, sospensione, FK composite e accessi tra tenant.
+
+## Iscrizioni — F2
+
+Un partecipante non diventa membro dell'organizzazione quando si iscrive. La sua identità globale accede solo a Person propria e Registration di cui è proprietaria. La discovery delle iscrizioni restituisce soltanto ID e metadati dell'identità corrente; il backend imposta poi il tenant della singola iscrizione prima di leggerne lo snapshot. Un ID indovinato non dà accesso.
+
+La FK verso la revisione include organizationId; gli eventi usano un'altra FK composita. Gli admin vedono gli snapshot locali delle iscrizioni del proprio tenant, non l'anagrafica Person globale. Le prove con due organizzazioni e due partecipanti verificano letture, modifiche, sospensione e accesso worker negato. Il partecipante conserva consultazione dei propri documenti anche dopo chiusura o sospensione; le mutazioni sono bloccate.

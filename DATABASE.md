@@ -4,7 +4,7 @@
 
 PostgreSQL **18.6** locale/CI e Prisma **7.10.1**. Tabelle auth: user, session, account, verification, twoFactor. Tabelle foundation: person, organization, organization_membership, platform_role, audit_event.
 
-User e Person sono distinti: userId della persona è opzionale e univoco; un trigger crea la persona dell'account nuovo nella stessa transazione. I giurati e i partecipanti di concorso non sono ancora modellati.
+User e Person sono distinti: userId della persona è opzionale e univoco; un trigger crea la persona dell'account nuovo nella stessa transazione. Da F2, Person conserva il profilo e Registration l'iscrizione a una specifica revisione di edizione. I giurati non sono ancora modellati.
 
 Organization ha nome, slug univoco, contatto e stato active/suspended. Le membership foundation hanno ruolo admin; non esiste un ruolo fisso su User. PlatformRole è distinto, limitato a super_admin e non assegnabile dal runtime.
 
@@ -16,13 +16,13 @@ AuditEvent collega attore, membership e organizzazione. Una FK composita impedis
 - lumio_app: runtime senza superuser, BYPASSRLS, proprietà delle tabelle o facoltà di assegnare privilegi piattaforma. Il provisioning organizzativo passa da policy specifiche per Super Admin autenticati con MFA.
 - ADMIN_DATABASE_URL: solo per bootstrap locale e test con database temporanei.
 
-pnpm db:provision crea i ruoli e assegna lo schema al migrator; richiede privilegi amministrativi. pnpm db:migrate applica sei migrazioni: le quattro foundation/provisioning e le due F1 per competizioni e protezioni della configurazione. Le policy e i vincoli SQL aggiuntivi sono mantenuti esplicitamente nelle migrazioni, non da db push.
+pnpm db:provision crea i ruoli e assegna lo schema al migrator; richiede privilegi amministrativi. pnpm db:migrate applica otto migrazioni: quattro foundation/provisioning, due F1 e due F2 per profili/iscrizioni e ricevute. Le policy e i vincoli SQL aggiuntivi sono mantenuti esplicitamente nelle migrazioni, non da db push.
 
 Il seed è ripetibile, vietato in NODE_ENV=production e privo di password demo. Il test di migrazione prova l'intera sequenza da database vuoto e rimuove solo il database temporaneo generato dal test.
 
 ## Pianificato
 
-Registration e relativo snapshot, Entry, Photo, PhotoRevision, MediaAsset, pagamenti e giuria. Backup e restore gestiti saranno verificati prima del pilota remoto.
+Entry, Photo, PhotoRevision, MediaAsset, pagamenti e giuria. Backup e restore gestiti saranno verificati prima del pilota remoto.
 
 ## Aggiunte F0.3
 
@@ -41,3 +41,13 @@ Contest, Edition, Section ed EditionRevision hanno organizationId e RLS forzata.
 La revisione contiene lo snapshot completo e l'autore. Il runtime ha solo SELECT/INSERT su edition_revision e non può cancellare concorsi/edizioni. Trigger impediscono modifiche a edizioni/sezioni pubblicate e cambi del genitore. Il migrator conserva diritti di manutenzione espliciti; non è una credenziale HTTP.
 
 AuditEvent conserva anche before/after JSON. Eliminazione sezioni limitata alle bozze; pubblicazione e archiviazione preservano i dati. Le date configurabili sono stringhe ISO UTC nello snapshot.
+
+## Aggiunte F2
+
+Person aggiunge campi personali facoltativi e profileVersion. Registration è distinta dall'account, dalla persona e dalle future opere. FK composita (organizationId, editionId, editionVersion) alla revisione pubblicata e vincolo univoco persona/edizione impediscono riferimenti incrociati e duplicati. ProfileSnapshot e configurationSnapshot non vengono aggiornati al cambiare del profilo globale. Versione documenti e timestamp di accettazione/lettura restano bloccati dal trigger runtime.
+
+RegistrationEvent è append-only per il runtime e usa FK composita alla stessa organizzazione/iscrizione. Solo il partecipante può modificare il proprio snapshot durante la finestra aperta; gli admin hanno lettura tenant con MFA. Il worker non riceve nuovi privilegi. Catalogo e discovery usano funzioni SECURITY DEFINER con search_path fissato e EXECUTE non pubblico; espongono solo dati pubblicati o dell'identità corrente.
+
+lumio_test è un database locale distinto. Condivide i nomi dei ruoli del cluster, ma test:setup non cambia le loro password se esistono già. I runner richiedono lumio_test per tutte le URL prima di eseguire query; le verifiche delle migrazioni creano inoltre solo database temporanei lumio_verify_*.
+
+La migrazione delle ricevute aggiunge a Registration gli snapshot di nome organizzazione, concorso e contatto, valorizzandoli anche sulle bozze esistenti. OutboxEvent supporta registration.started con FK composita allo stesso tenant e univocità tipo/iscrizione. Le policy consentono al proprietario di preparare e consultare la propria ricevuta; l'API restituisce solo lo stato, non il payload cifrato. Il worker non ottiene accesso a registrazioni o persone.
