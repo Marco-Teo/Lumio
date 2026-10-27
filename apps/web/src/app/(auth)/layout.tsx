@@ -7,7 +7,7 @@ export default function AuthenticationLayout({
   children: ReactNode;
 }) {
   return (
-    <main>
+    <main className="auth-card">
       <Link href="/">Lumio</Link>
       {children}
       <nav aria-label="Account">

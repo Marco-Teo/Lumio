@@ -10,6 +10,9 @@ import {
   type EditionConfiguration,
 } from '../../../lib/competitions';
 import { EditionForm } from './edition-form';
+import { CoverInput } from './cover-input';
+import { ContestCover } from '../../components/contest-cover';
+import { maxCoverBytes } from '../../../lib/contest-cover';
 import { FormField, FormFeedback, FormErrorSummary } from '../form-feedback';
 import {
   competitionFormIssues,
@@ -33,6 +36,7 @@ type ContestRow = {
   name: string;
   slug: string;
   description: string;
+  coverVersion: string | null;
   editions: EditionRow[];
 };
 type ContestInput = { name: string; slug: string; description: string };
@@ -56,7 +60,10 @@ function PublicationChecklist({ configuration }: { configuration: unknown }) {
 async function call<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers:
+      options?.body instanceof FormData
+        ? options.headers
+        : { 'Content-Type': 'application/json', ...options?.headers },
   });
   const result = await response.json();
   if (!response.ok)
@@ -76,6 +83,7 @@ export function CompetitionConsole({
   const [contests, setContests] = useState<ContestRow[]>([]);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [contestErrors, setContestErrors] = useState<CompetitionFormIssue[]>(
     [],
   );
@@ -85,6 +93,7 @@ export function CompetitionConsole({
   } | null>(null);
   const [editingContest, setEditingContest] = useState<{
     id?: string;
+    coverVersion?: string | null;
     data: ContestInput;
   }>({ data: { name: '', slug: '', description: '' } });
   const [editingEdition, setEditingEdition] = useState<{
@@ -139,6 +148,11 @@ export function CompetitionConsole({
       );
     }
   }
+  function resetContest() {
+    setCoverFile(null);
+    setContestErrors([]);
+    setEditingContest({ data: { name: '', slug: '', description: '' } });
+  }
   async function saveContest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const parsed = contestSchema.safeParse(editingContest.data);
@@ -147,22 +161,52 @@ export function CompetitionConsole({
       return;
     }
     setContestErrors([]);
+    if (coverFile && coverFile.size > maxCoverBytes) {
+      setMessage(
+        'L’immagine supera 3 MB. Scegli un file più piccolo o annulla la selezione.',
+      );
+      return;
+    }
     await perform(async () => {
-      await call(editingContest.id ? `${base}/${editingContest.id}` : base, {
-        method: editingContest.id ? 'PATCH' : 'POST',
-        body: JSON.stringify(parsed.data),
+      const saved = await call<ContestRow>(
+        editingContest.id ? `${base}/${editingContest.id}` : base,
+        {
+          method: editingContest.id ? 'PATCH' : 'POST',
+          body: JSON.stringify(parsed.data),
+        },
+      );
+      setEditingContest({
+        id: saved.id,
+        coverVersion: saved.coverVersion,
+        data: parsed.data,
       });
-      setEditingContest({ data: { name: '', slug: '', description: '' } });
+      if (coverFile) {
+        const form = new FormData();
+        form.set('file', coverFile);
+        try {
+          await call(`${base}/${saved.id}/cover`, {
+            method: 'PUT',
+            body: form,
+          });
+        } catch (error) {
+          await load();
+          throw new Error(
+            `Il concorso è salvato, ma l’immagine non è stata caricata. ${error instanceof Error ? error.message : 'Riprova.'}`,
+            { cause: error },
+          );
+        }
+      }
+      resetContest();
     }, 'Concorso salvato. Ora puoi creare le sue edizioni.');
   }
   return (
-    <>
-      <p>
+    <div className="competition-console">
+      <p className="page-description">
         Ogni concorso può avere più edizioni. Le bozze di iscrizione sono
         disponibili nelle date configurate; caricamento delle immagini e
         conferma definitiva arriveranno nelle fasi successive.
       </p>
-      <section>
+      <section className="panel contest-editor">
         <h2>{editingContest.id ? 'Modifica concorso' : 'Nuovo concorso'}</h2>
         <FormFeedback issues={contestErrors}>
           <form onSubmit={saveContest} noValidate>
@@ -193,16 +237,29 @@ export function CompetitionConsole({
                 onChange={(e) => changeContest('description', e.target.value)}
               />
             </FormField>
+            <CoverInput
+              key={editingContest.id ?? 'new'}
+              file={coverFile}
+              busy={busy}
+              onChange={setCoverFile}
+              existingSrc={
+                editingContest.id && editingContest.coverVersion
+                  ? `${base}/${editingContest.id}/cover?v=${editingContest.coverVersion}`
+                  : null
+              }
+              onRemove={() =>
+                void perform(async () => {
+                  if (!editingContest.id) return;
+                  await call(`${base}/${editingContest.id}/cover`, {
+                    method: 'DELETE',
+                  });
+                  setEditingContest({ ...editingContest, coverVersion: null });
+                }, 'Immagine rimossa.')
+              }
+            />
             <button disabled={busy}>Salva concorso</button>
             {editingContest.id && (
-              <button
-                type="button"
-                onClick={() =>
-                  setEditingContest({
-                    data: { name: '', slug: '', description: '' },
-                  })
-                }
-              >
+              <button type="button" onClick={resetContest}>
                 Annulla modifica concorso
               </button>
             )}
@@ -210,27 +267,37 @@ export function CompetitionConsole({
         </FormFeedback>
       </section>
       <p role="status">{message}</p>
-      <section>
+      <section className="contest-list">
         <h2>Concorsi</h2>
         {contests.length === 0 && <p>Non ci sono ancora concorsi.</p>}
         {contests.map((contest) => (
           <article className="contest-card" key={contest.id}>
+            {contest.coverVersion && (
+              <div className="admin-contest-cover">
+                <ContestCover
+                  src={`${base}/${contest.id}/cover?v=${contest.coverVersion}`}
+                />
+              </div>
+            )}
             <h3>{contest.name}</h3>
             <p>{contest.description}</p>
             <small>{contest.slug}</small>
             <div className="actions">
               <button
                 disabled={busy}
-                onClick={() =>
+                onClick={() => {
+                  setCoverFile(null);
+                  setContestErrors([]);
                   setEditingContest({
                     id: contest.id,
+                    coverVersion: contest.coverVersion,
                     data: {
                       name: contest.name,
                       slug: contest.slug,
                       description: contest.description,
                     },
-                  })
-                }
+                  });
+                }}
               >
                 Modifica concorso
               </button>
@@ -347,7 +414,7 @@ export function CompetitionConsole({
         ))}
       </section>
       {editingEdition && (
-        <section>
+        <section className="edition-editor">
           <h2>
             {editingEdition.edition
               ? 'Configurazione edizione'
@@ -384,7 +451,7 @@ export function CompetitionConsole({
         </section>
       )}
       {history && (
-        <section>
+        <section className="panel history-panel">
           <h2>Versioni di {history.name}</h2>
           <p>
             Ogni versione conserva documenti, sezioni e regole del momento del
@@ -411,6 +478,6 @@ export function CompetitionConsole({
           <button onClick={() => setHistory(null)}>Chiudi versioni</button>
         </section>
       )}
-    </>
+    </div>
   );
 }

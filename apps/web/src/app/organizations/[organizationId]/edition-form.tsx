@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import {
   FormField as Field,
   FormFeedback,
@@ -36,6 +36,8 @@ export function EditionForm({
   onCancel: () => void;
 }) {
   const [config, setConfig] = useState(initial);
+  const anchor = useId();
+  const [activeSection, setActiveSection] = useState('general');
   const [errors, setErrors] = useState<CompetitionFormIssue[]>([]);
   const [validated, setValidated] = useState(false);
   function set<K extends keyof EditionConfiguration>(
@@ -75,9 +77,45 @@ export function EditionForm({
           await onSave(parsed.data);
         }}
       >
+        <div className="editor-toolbar">
+          <div className="editor-context">
+            <strong>{config.name || 'Nuova edizione'}</strong>
+            <p>
+              <span
+                className={`badge ${readOnly ? 'badge-neutral' : 'badge-amber'}`}
+              >
+                {readOnly ? 'Sola lettura' : 'Bozza'}
+              </span>
+            </p>
+          </div>
+          {!readOnly && <button disabled={busy}>Salva bozza</button>}
+        </div>
+        <nav className="editor-jumps" aria-label="Sezioni configurazione">
+          {[
+            ['general', 'Generale'],
+            ['dates', 'Date'],
+            ['sections', 'Sezioni'],
+            ['documents', 'Documenti'],
+            ['images', 'Regole immagini'],
+            ['fees', 'Quote e voto'],
+          ].map(([key, label]) => (
+            <a
+              key={key}
+              href={`#${anchor}-${key}`}
+              onClick={() => setActiveSection(key)}
+              aria-current={activeSection === key ? 'location' : undefined}
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
         <FormErrorSummary />
-        <fieldset disabled={readOnly || busy}>
-          <legend>Edizione</legend>
+        <fieldset
+          id={`${anchor}-general`}
+          className="editor-section"
+          disabled={readOnly || busy}
+        >
+          <legend>Informazioni dell’edizione</legend>
           <Field label="Nome edizione" path="name">
             <input
               value={config.name}
@@ -112,6 +150,13 @@ export function EditionForm({
               maxLength={5000}
             />
           </Field>
+        </fieldset>
+        <fieldset
+          id={`${anchor}-dates`}
+          className="editor-section date-section"
+          disabled={readOnly || busy}
+        >
+          <legend>Date</legend>
           <p>
             Le date sono mostrate nell’ora locale del tuo dispositivo e salvate
             in UTC.
@@ -140,7 +185,11 @@ export function EditionForm({
             </Field>
           ))}
         </fieldset>
-        <fieldset disabled={readOnly || busy}>
+        <fieldset
+          id={`${anchor}-documents`}
+          className="editor-section"
+          disabled={readOnly || busy}
+        >
           <legend>Documenti</legend>
           <p>
             Inserisci i testi di regolamento e privacy. Ogni salvataggio
@@ -161,7 +210,11 @@ export function EditionForm({
             />
           </Field>
         </fieldset>
-        <fieldset disabled={readOnly || busy}>
+        <fieldset
+          id={`${anchor}-images`}
+          className="editor-section"
+          disabled={readOnly || busy}
+        >
           <legend>Regole immagini</legend>
           <p>
             Configurazione per i futuri caricamenti; in questa fase non vengono
@@ -249,7 +302,11 @@ export function EditionForm({
             </select>
           </Field>
         </fieldset>
-        <fieldset disabled={readOnly || busy}>
+        <fieldset
+          id={`${anchor}-fees`}
+          className="editor-section"
+          disabled={readOnly || busy}
+        >
           <legend>Quote e voto</legend>
           <p>
             Queste impostazioni saranno usate nelle fasi dedicate a pagamenti e
@@ -306,7 +363,11 @@ export function EditionForm({
             </select>
           </Field>
         </fieldset>
-        <fieldset disabled={readOnly || busy}>
+        <fieldset
+          id={`${anchor}-sections`}
+          className="editor-section"
+          disabled={readOnly || busy}
+        >
           <legend>Sezioni</legend>
           {config.sections.map((item, index) => (
             <fieldset key={index}>
@@ -503,7 +564,6 @@ export function EditionForm({
           </aside>
         )}
         {readOnly && <p>Configurazione bloccata dalla pubblicazione.</p>}
-        {!readOnly && <button disabled={busy}>Salva bozza</button>}
         <button type="button" onClick={onCancel}>
           Chiudi configurazione
         </button>

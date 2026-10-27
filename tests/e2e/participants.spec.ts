@@ -1,5 +1,7 @@
 import { test, expect, type BrowserContext } from '@playwright/test';
 import { randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { saveContestCover } from '../../apps/web/src/server/competitions/cover';
 import { createDatabase } from '@lumio/database';
 import { authentication } from '../../apps/web/src/server/auth';
 import {
@@ -58,6 +60,12 @@ test('participant starts an edition registration with independent profile data a
       slug: 'partecipanti',
       description: '',
     });
+    await saveContestCover(
+      actor,
+      organizationId,
+      contest.id,
+      readFileSync('tests/fixtures/contest-cover.png'),
+    );
     const at = (days: number) =>
       new Date(Date.now() + days * 86400000).toISOString();
     const config = {
@@ -128,6 +136,40 @@ test('participant starts an edition registration with independent profile data a
     ).toContainText('Non devi attendere un’approvazione');
     const receiptLink = await emailLink(request, email, '/registrations/');
     expect(new URL(receiptLink).pathname).toBe(registrationPath);
+    await page.goto('/registrations');
+    await expect(
+      page.getByRole('heading', { name: 'Le mie iscrizioni' }),
+    ).toBeVisible();
+    await expect(page.locator('.registration-card img')).toBeVisible();
+    await expect
+      .poll(() =>
+        page
+          .locator('.registration-card img')
+          .evaluate(
+            (image) =>
+              image instanceof HTMLImageElement && image.naturalWidth > 0,
+          ),
+      )
+      .toBe(true);
+    if (!process.env.CI)
+      await page.screenshot({
+        path: '.tools/design-preview/participant-desktop.png',
+        fullPage: true,
+      });
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    if (!process.env.CI)
+      await page.screenshot({
+        path: '.tools/design-preview/participant-mobile.png',
+        fullPage: true,
+      });
+    await page.getByRole('link', { name: 'Apri bozza', exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${registrationPath}$`));
+    await page.setViewportSize({ width: 1280, height: 720 });
     await expect(page.getByText('Stato: Opere da aggiungere')).toBeVisible();
     await expect(page.getByLabel('Nome', { exact: true })).toHaveValue(
       'Profilo originale',
@@ -191,6 +233,12 @@ test('participant starts an edition registration with independent profile data a
     await expect(
       page.getByRole('button', { name: 'Salva dati iscrizione' }),
     ).toHaveCount(0);
+    await saveContestCover(actor, organizationId, contest.id, null);
+    await page.goto('/registrations');
+    await expect(
+      page.locator('.registration-card .cover-placeholder'),
+    ).toBeVisible();
+    await expect(page.locator('.registration-card img')).toHaveCount(0);
   } finally {
     await otherContext?.close();
     if (organizationId) {

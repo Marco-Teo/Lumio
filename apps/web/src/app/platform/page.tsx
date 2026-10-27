@@ -25,7 +25,13 @@ export default async function PlatformPage() {
   return (
     <main className="platform">
       <Link href="/account">Il tuo account</Link>
-      <h1>Console Lumio</h1>
+      <div className="page-heading">
+        <p className="eyebrow">AMMINISTRAZIONE PIATTAFORMA</p>
+        <h1>Console Lumio</h1>
+        <p className="page-description">
+          Organizzazioni, amministratori e inviti, in un unico spazio.
+        </p>
+      </div>
       <PlatformConsole />
     </main>
   );

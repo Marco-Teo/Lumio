@@ -116,6 +116,18 @@ test('organizer configures, versions, publishes and archives an edition', async 
         await page.request.get('/api/v1/organizations/demo-org-b/contests')
       ).status(),
     ).toBe(404);
+    const parallel = await Promise.all(
+      Array.from({ length: 12 }, (_, index) =>
+        page.request.get(
+          index % 2 === 0
+            ? `/api/v1/organizations/${organizationId}/contests`
+            : '/api/v1/organizations/demo-org-b/contests',
+        ),
+      ),
+    );
+    expect(parallel.map((response) => response.status())).toEqual(
+      Array.from({ length: 12 }, (_, index) => (index % 2 === 0 ? 200 : 404)),
+    );
     expect(
       (
         await page.request.post(
@@ -143,6 +155,9 @@ test('organizer configures, versions, publishes and archives an edition', async 
     await page
       .getByLabel('Descrizione concorso')
       .fill('Contenitore permanente');
+    await page
+      .getByLabel('Immagine del concorso')
+      .setInputFiles('tests/fixtures/contest-cover.png');
     await page.getByRole('button', { name: 'Salva concorso' }).click();
     await expect(page.getByRole('status')).toContainText('Concorso salvato');
     await page.getByRole('button', { name: 'Nuova edizione' }).click();
@@ -232,6 +247,11 @@ test('organizer configures, versions, publishes and archives an edition', async 
     ).toHaveCount(0);
     await second.getByRole('button', { name: 'Sposta su' }).click();
     await expect(first.getByLabel('Nome sezione')).toHaveValue('Racconto');
+    await page.getByRole('link', { name: 'Generale', exact: true }).click();
+    if (!process.env.CI)
+      await page.screenshot({
+        path: '.tools/design-preview/organizer-desktop.png',
+      });
     await page.getByRole('button', { name: 'Salva bozza' }).click();
     await expect(page.getByRole('status')).toContainText('Bozza salvata');
     await page.reload();
@@ -249,6 +269,13 @@ test('organizer configures, versions, publishes and archives an edition', async 
     });
     expect(savedEdition.status).toBe('published');
     expect(savedEdition.publishedAt).not.toBeNull();
+    const savedContest = await owner.contest.findUniqueOrThrow({
+      where: { id: savedEdition.contestId },
+    });
+    expect(savedContest.coverVersion).toMatch(/^[a-f0-9]{64}$/);
+    const image = await request.get(`/api/contests/${savedContest.id}/cover`);
+    expect(image.status()).toBe(200);
+    expect(image.headers()['content-type']).toBe('image/webp');
     expect(
       await owner.auditEvent.count({
         where: {
@@ -283,6 +310,20 @@ test('organizer configures, versions, publishes and archives an edition', async 
     await expect(
       page.getByText('Stato: Archiviata', { exact: false }),
     ).toBeVisible();
+    await page
+      .getByRole('button', { name: 'Modifica concorso', exact: true })
+      .click();
+    await page
+      .getByRole('button', { name: 'Rimuovi immagine', exact: true })
+      .click();
+    await expect(page.getByRole('status')).toContainText('Immagine rimossa');
+    expect(
+      (
+        await owner.contest.findUniqueOrThrow({
+          where: { id: savedContest.id },
+        })
+      ).coverVersion,
+    ).toBeNull();
     await page.getByRole('link', { name: 'Il tuo account' }).click();
     await page.getByRole('link', { name: 'Torna alla home' }).click();
     await expect(page).toHaveURL('/');
