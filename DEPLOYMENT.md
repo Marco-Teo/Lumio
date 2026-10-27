@@ -48,3 +48,7 @@ Nessun servizio o segreto aggiuntivo. Applicare `pnpm db:migrate` con la credenz
 F2 richiede la settima e l'ottava migrazione, poi generazione del client e riavvio di web e worker. Il worker aggiornato deve gestire registration.started prima di accettare nuove iscrizioni. Nessuna nuova dipendenza o servizio di produzione. Il catalogo pubblico mostra solo edizioni pubblicate di organizzazioni attive; la data UTC determina l'accesso alle bozze di iscrizione.
 
 Per i test locali usare `pnpm env:test`, avviare mailpit-test e poi `pnpm test:setup`. Test SMTP/HTTP su 1026/8026, database lumio_test, Redis DB 15. Non configurare LUMIO_TEST_MODE né distribuire .env.test.local nei servizi remoti. La CI usa gli stessi runner e una Mailpit dedicata; non contiene credenziali SES o destinatari reali.
+
+## Upgrade interfaccia e copertine
+
+Installazione con lockfile, nona migrazione e generazione del client prima di riavviare il web. Nessuna variabile ambiente o risorsa cloud nuova. Sharp è una dipendenza runtime esplicita del web: mantenere il build nativo approvato già nel workspace pnpm. Le copertine sono incluse nei backup PostgreSQL; non dipendono dal disco del server web. Non è stato attivato storage fotografico per le opere.

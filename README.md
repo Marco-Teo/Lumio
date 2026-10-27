@@ -111,6 +111,8 @@ Creare il concorso permanente e poi una o più edizioni. La bozza può essere in
 
 Ogni salvataggio dell'edizione crea una revisione completa, consultabile da **Versioni salvate**. La pubblicazione richiede descrizione, quattro date ordinate, regolamento, privacy e almeno una sezione valida; congela la configurazione. Dopo la pubblicazione è disponibile soltanto l'archiviazione. Da F2, le edizioni pubblicate e attive compaiono nel catalogo pubblico e accettano bozze di iscrizione soltanto tra apertura inclusa e chiusura esclusa.
 
+Il concorso può avere un'immagine **facoltativa**, caricabile anche da **Modifica concorso**. Formati JPEG/PNG/WebP statici, fino a 3 MB e 12 megapixel. La copertina viene ridimensionata (massimo 1200×800), convertita in WebP e ripulita dai metadati; è salvata nel database, senza storage cloud aggiuntivo. È sostituibile o rimovibile e appare nel catalogo e in **Le mie iscrizioni**. Senza immagine viene mostrato un segnaposto neutro. La copertina è un elemento del concorso, distinto dalle fotografie delle opere: il caricamento delle fotografie dei partecipanti non è ancora disponibile.
+
 Per aggiornare un ambiente F0.3 già configurato: `pnpm db:migrate`, poi riavviare il web. Non rigenerare i file ambiente. Non sono necessarie dipendenze o servizi nuovi.
 
 ## Partecipanti e iscrizioni — F2
@@ -122,3 +124,7 @@ La bozza copia il profilo e conserva versione e testo dei documenti dell'edizion
 Gli stati derivati sono **Dati personali da completare** e **Opere da aggiungere**. Non esiste ancora conferma definitiva. Dopo chiusura, archiviazione o sospensione non si può modificare la bozza; il partecipante può ancora consultare i propri dati e documenti. L'organizzatore con MFA vede le ultime 100 bozze del proprio tenant da **Iscrizioni dell'organizzazione**. Il catalogo e le liste personali mostrano fino a 100 record; la lettura diretta di una propria iscrizione non ha questo limite.
 
 La pagina della bozza conferma la ricezione, identifica concorso/edizione/organizzazione e indica il contatto organizzatore e il prossimo passo. Non è richiesta approvazione dell'admin. Per le nuove iscrizioni viene preparata nella stessa transazione una email di riepilogo asincrona, con link alla bozza; lo stato di invio è visibile nella pagina. La ricevuta conferma il salvataggio, non l'iscrizione definitiva. Le bozze precedenti mostrano il riepilogo ma non generano invii retroattivi. In locale queste email arrivano in Mailpit manuale, mentre quelle dei test restano nella Mailpit dedicata.
+
+## Interfaccia
+
+Stile chiaro con verde petrolio, navigazione globale e menu laterale dell'organizzazione. Le iscrizioni sono schede con immagine, concorso, edizione, scadenza e stato; l'editor offre collegamenti rapidi alle sezioni e salvataggio sempre raggiungibile. Layout adattato a desktop e telefono, focus da tastiera e riepiloghi degli errori mantenuti. Nomi e fotografie delle anteprime grafiche non sono dati precaricati nel prodotto.

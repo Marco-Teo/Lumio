@@ -51,3 +51,9 @@ Il runner rifiuta NODE_ENV=production, database remoti o diversi da lumio_test, 
 Le verifiche rimangono un'attività operativa locale/CI: non distribuire .env.test.local o gli strumenti di bootstrap privilegiati come configurazione dei servizi di produzione. Le credenziali dei ruoli database restano fidate; i controlli non proteggono da chi modifichi intenzionalmente runner o codice.
 
 La ricevuta di bozza usa destinatario verificato della sessione e riferimenti server; il corpo non contiene anagrafica, password o token di accesso. Il link richiede login come proprietario. Il payload outbox è cifrato; Redis e log conservano solo il riferimento evento. L'email di contatto dell'organizzazione è restituita dal dettaglio dell'edizione pubblicata e mostrata nel riepilogo dell'iscrizione.
+
+## Copertine amministrative
+
+Upload e rimozione richiedono identità verificata, MFA, membership admin, organizzazione attiva e Origin corretto. La lettura del corpo è limitata prima del parsing multipart. Il decoder accetta solo firme JPEG/PNG/WebP, file statici fino a 3 MB / 12 megapixel, con timeout e output WebP limitato a 1 MB. Nessun URL remoto da scaricare, SVG, nome file conservato o metadato EXIF nel derivato.
+
+Le anteprime di bozza usano l'endpoint amministrativo protetto. La lettura pubblica è una capability ristretta alle edizioni pubblicate/attive; un partecipante autenticato mantiene accesso alle copertine dei propri concorsi dopo archiviazione. Risposte private con ETag, Vary Cookie e nosniff; nessuna cache condivisa per dati autorizzati da sessione. Le fotografie delle opere e la loro futura pipeline privata restano fuori da questo incremento.

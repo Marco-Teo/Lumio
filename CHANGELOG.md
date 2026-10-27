@@ -76,6 +76,16 @@ I moduli concorso/edizione mostrano errori in italiano accanto ai campi, con rie
 
 La bozza ora mostra conferma di ricezione, organizzazione destinataria, contatto e prossimo passo, distinguendola dalla conferma definitiva. Le nuove iscrizioni accodano atomicamente una ricevuta email cifrata, senza duplicare eventi per richieste ripetute. Il worker la consegna con retry; la pagina mostra lo stato. Nessun invio retroattivo. Aggiunti test di ricevuta, retry, deduplicazione e rollback (42 test di integrazione totali); suite browser estesa alla consegna in Mailpit isolata.
 
+## Interfaccia generale e copertine facoltative
+
+- Applicato lo stile chiaro con verde petrolio: header globale, menu laterale organizzatore, schede iscrizione con stato/scadenza e moduli uniformi.
+- Navigazione rapida nelle sezioni dell'edizione, salvataggio raggiungibile durante lo scorrimento e layout per telefono.
+- Immagine del concorso facoltativa, caricabile/sostituibile/rimovibile. Anteprima, segnaposto neutro e visualizzazione nel catalogo e nelle iscrizioni.
+- JPEG/PNG/WebP statici entro 3 MB e 12 megapixel; derivato WebP ridimensionato senza metadati, memorizzato nel database con digest. Nessun nuovo storage cloud né upload opere.
+- Nona migrazione e accessi protetti: copertine di bozza private, copertine pubblicate visibili e accesso personale mantenuto dopo archiviazione.
+- Verifiche locali: 47 unit test, 43 integrazioni, 7 E2E e build. Esaminate schermate desktop/mobile delle iscrizioni e dell'editor con dati sintetici; provati caricamento, rimozione e assenza di immagine.
+- Stabilizzato il riuso del client database tra bundle delle pagine e delle API: il confronto usa la forma dei modelli generati anziché l'identità della funzione factory. Aggiunta regressione sulle richieste concorrenti autorizzate e tra tenant.
+
 ## Prossime funzionalità — non implementate
 
 Non sono ancora disponibili opere, caricamento fotografie, revisioni fotografiche, anonimizzazione, giurie, pagamenti o conferma definitiva dell'iscrizione. Esistono bozze di iscrizione con dati e documenti versionati. Retention, portabilità, cancellazione/anonimizzazione e paginazione completa richiedono lavoro ulteriore prima del pilota. I principi architetturali approvati restano invariati.

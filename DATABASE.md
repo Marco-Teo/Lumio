@@ -16,7 +16,7 @@ AuditEvent collega attore, membership e organizzazione. Una FK composita impedis
 - lumio_app: runtime senza superuser, BYPASSRLS, proprietà delle tabelle o facoltà di assegnare privilegi piattaforma. Il provisioning organizzativo passa da policy specifiche per Super Admin autenticati con MFA.
 - ADMIN_DATABASE_URL: solo per bootstrap locale e test con database temporanei.
 
-pnpm db:provision crea i ruoli e assegna lo schema al migrator; richiede privilegi amministrativi. pnpm db:migrate applica otto migrazioni: quattro foundation/provisioning, due F1 e due F2 per profili/iscrizioni e ricevute. Le policy e i vincoli SQL aggiuntivi sono mantenuti esplicitamente nelle migrazioni, non da db push.
+pnpm db:provision crea i ruoli e assegna lo schema al migrator; richiede privilegi amministrativi. pnpm db:migrate applica nove migrazioni: quattro foundation/provisioning, due F1, due F2 e una per le copertine facoltative dei concorsi. Le policy e i vincoli SQL aggiuntivi sono mantenuti esplicitamente nelle migrazioni, non da db push.
 
 Il seed è ripetibile, vietato in NODE_ENV=production e privo di password demo. Il test di migrazione prova l'intera sequenza da database vuoto e rimuove solo il database temporaneo generato dal test.
 
@@ -51,3 +51,5 @@ RegistrationEvent è append-only per il runtime e usa FK composita alla stessa o
 lumio_test è un database locale distinto. Condivide i nomi dei ruoli del cluster, ma test:setup non cambia le loro password se esistono già. I runner richiedono lumio_test per tutte le URL prima di eseguire query; le verifiche delle migrazioni creano inoltre solo database temporanei lumio_verify_*.
 
 La migrazione delle ricevute aggiunge a Registration gli snapshot di nome organizzazione, concorso e contatto, valorizzandoli anche sulle bozze esistenti. OutboxEvent supporta registration.started con FK composita allo stesso tenant e univocità tipo/iscrizione. Le policy consentono al proprietario di preparare e consultare la propria ricevuta; l'API restituisce solo lo stato, non il payload cifrato. Il worker non ottiene accesso a registrazioni o persone.
+
+La nona migrazione aggiunge coverData bytea e coverVersion nullable al concorso: entrambi assenti o entrambi valorizzati, con limite 1 MB e digest di 64 caratteri hex. RLS amministrativa resta invariata. Le capability dei cataloghi restituiscono ID/digest e scadenza per comporre le schede, senza byte dell'immagine. visible_contest_cover permette il derivato a ospiti solo se esiste un'edizione pubblicata in organizzazione attiva; il proprietario di un'iscrizione può consultarlo anche dopo archiviazione. Il worker non riceve privilegi sulle copertine.

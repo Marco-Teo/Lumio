@@ -53,3 +53,13 @@ La creazione della bozza inserisce anche un evento outbox registration.started n
 ## Isolamento delle verifiche
 
 I runner caricano soltanto .env.test.local, validano destinazioni locali note e usano lumio_test, Redis DB 15 e Mailpit SMTP 1026 / HTTP 8026. La CI esegue lo stesso bootstrap. Web e worker manuali restano su lumio, Redis DB 0 e Mailpit 1025/8025. Non sono necessari nuovi package o servizi cloud.
+
+## Interfaccia e copertine del concorso
+
+Componenti locali nel web per header, navigazione organizzativa, icone SVG e copertine; nessun package UI o libreria icone aggiuntivi. Colori e spaziature sono definiti nel CSS globale, con layout responsive. I collegamenti dell'editor spostano il focus visivo tra sezioni senza nascondere campi o perdere dati non salvati.
+
+La copertina amministrativa è facoltativa e distinta dai media delle opere. Sharp 0.35.5 (già presente indirettamente con Next, ora dipendenza diretta esplicita) valida e ridimensiona l'immagine entro limiti stretti. Per il bootstrap, il solo derivato WebP è conservato in Contest.coverData (massimo 1 MB), con SHA-256 per cache e audit. Non si conserva l'originale di questa copertina modificabile; il requisito di originali immutabili continua a valere per le future fotografie dei partecipanti.
+
+La scelta bytea evita un servizio di storage anticipato e rende la copertina persistente anche su hosting senza disco durevole. Prima di grandi volumi sarà da valutare object storage dedicato. Liste e audit contengono solo il digest, mai il contenuto binario. Creazione concorso e caricamento facoltativo sono richieste distinte: se l'immagine fallisce, il concorso resta salvato e il modulo permette il retry senza duplicarlo.
+
+La cache globale del client database confronta la forma degli enum scalari generati, stabile tra bundle server diversi. Evita di disconnettere pool ancora in uso quando una pagina e una API importano factory equivalenti con identità JavaScript diverse, mantenendo l'invalidazione quando cambiano modelli o campi.
