@@ -2,6 +2,12 @@ import '../../scripts/testing/preflight';
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import {
+  saveContestCover,
+  administrativeCover,
+  visibleCover,
+} from '../../apps/web/src/server/competitions/cover';
 import { createDatabase } from '@lumio/database';
 import { database } from '../../apps/web/src/server/database';
 import { withOrganization } from '../../apps/web/src/server/tenancy';
@@ -140,6 +146,31 @@ test('competition lifecycle, tenant isolation and immutable revisions', async (t
     },
   );
   await t.test(
+    'cover is optional, protected in draft and never embedded in list responses',
+    async () => {
+      await assert.rejects(visibleCover(contestId));
+      const bytes = readFileSync(
+        new URL('../fixtures/contest-cover.png', import.meta.url),
+      );
+      await assert.rejects(
+        saveContestCover(
+          { ...actor, twoFactorEnabled: false },
+          orgA,
+          contestId,
+          bytes,
+        ),
+      );
+      await assert.rejects(saveContestCover(actor, orgB, contestId, bytes));
+      const result = await saveContestCover(actor, orgA, contestId, bytes);
+      assert.match(result.coverVersion ?? '', /^[a-f0-9]{64}$/);
+      const cover = await administrativeCover(actor, orgA, contestId);
+      assert.equal(Buffer.from(cover.data).subarray(0, 4).toString(), 'RIFF');
+      await assert.rejects(visibleCover(contestId));
+      const list = await listCompetitions(actor, orgA);
+      assert.equal('coverData' in list.contests[0], false);
+    },
+  );
+  await t.test(
     'rejects incomplete publication without changing status or audit',
     async () => {
       const count = await owner.auditEvent.count({
@@ -269,6 +300,7 @@ test('competition lifecycle, tenant isolation and immutable revisions', async (t
         version: 2,
         status: 'published',
       });
+      assert.ok((await visibleCover(contestId)).data.length > 0);
       await assert.rejects(
         saveEdition(
           actor,

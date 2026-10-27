@@ -21,6 +21,8 @@ export type ParticipantActor = {
   emailVerified: boolean;
 };
 export type EditionSummary = {
+  contestId: string;
+  coverVersion: string | null;
   editionId: string;
   organizationName: string;
   contestName: string;
@@ -38,6 +40,10 @@ type PublishedEdition = {
   configuration: unknown;
 };
 type RegistrationSummary = {
+  contestId: string;
+  coverVersion: string | null;
+  organizationName: string;
+  closesAt: string;
   id: string;
   organizationId: string;
   editionId: string;

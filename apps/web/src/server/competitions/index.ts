@@ -48,7 +48,7 @@ export async function organizationMemberships(userId: string) {
     return organizations;
   });
 }
-async function manage<T>(
+export async function manage<T>(
   actor: CompetitionActor,
   organizationId: string,
   action: (tx: Prisma.TransactionClient, membershipId: string) => Promise<T>,
@@ -98,7 +98,12 @@ export async function listCompetitions(
     contests: await tx.contest.findMany({
       where: { organizationId },
       orderBy: { createdAt: 'desc' },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        coverVersion: true,
         editions: {
           orderBy: { createdAt: 'desc' },
           include: {
@@ -121,12 +126,34 @@ export async function saveContest(
   const data = contestSchema.parse(input);
   return manage(actor, organizationId, async (tx, membershipId) => {
     const before = contestId
-      ? await tx.contest.findFirst({ where: { id: contestId, organizationId } })
+      ? await tx.contest.findFirst({
+          where: { id: contestId, organizationId },
+          select: { id: true, name: true, slug: true, description: true },
+        })
       : null;
     if (contestId && !before) throw new AccessError(404);
     const contest = contestId
-      ? await tx.contest.update({ where: { id: contestId }, data })
-      : await tx.contest.create({ data: { ...data, organizationId } });
+      ? await tx.contest.update({
+          where: { id: contestId },
+          data,
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            coverVersion: true,
+          },
+        })
+      : await tx.contest.create({
+          data: { ...data, organizationId },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            coverVersion: true,
+          },
+        });
     await audit(
       tx,
       actor,

@@ -2,6 +2,11 @@ import '../../scripts/testing/preflight';
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import {
+  saveContestCover,
+  visibleCover,
+} from '../../apps/web/src/server/competitions/cover';
 import { setTimeout as delay } from 'node:timers/promises';
 import { startRuntime } from '../../apps/worker/src/runtime';
 import { createDatabase } from '@lumio/database';
@@ -117,6 +122,12 @@ test('participant profile and registration ownership across tenants', async (t) 
     slug: 'concorso',
     description: '',
   });
+  await saveContestCover(
+    admin,
+    orgA,
+    contestA.id,
+    readFileSync(new URL('../fixtures/contest-cover.png', import.meta.url)),
+  );
   const editionA = await saveEdition(admin, orgA, contestA.id, {
     configuration: config,
   });
@@ -379,6 +390,10 @@ test('participant profile and registration ownership across tenants', async (t) 
         (await myRegistrations(participant)).map((row) => row.id),
         [registrationId],
       );
+      assert.match(
+        (await myRegistrations(participant))[0].coverVersion ?? '',
+        /^[a-f0-9]{64}$/,
+      );
       await runtime.$transaction(async (tx) => {
         await tx.$executeRaw`SELECT set_config('app.user_id',${other.id},true)`;
         await tx.$executeRaw`SELECT set_config('app.organization_id',${orgA},true)`;
@@ -458,6 +473,10 @@ test('participant profile and registration ownership across tenants', async (t) 
         startRegistration(participant, closed.id, consent),
         /non sono aperte/,
       );
+      await transitionEdition(admin, orgA, contestA.id, closed.id, {
+        version: 1,
+        status: 'archived',
+      });
       await transitionEdition(admin, orgA, contestA.id, editionA.id, {
         version: 1,
         status: 'archived',
@@ -466,6 +485,11 @@ test('participant profile and registration ownership across tenants', async (t) 
         (await registrationDetail(participant, registrationId)).editable,
         false,
       );
+      await assert.rejects(visibleCover(contestA.id));
+      assert.ok(
+        (await visibleCover(contestA.id, participant.id)).data.length > 0,
+      );
+      await assert.rejects(visibleCover(contestA.id, other.id));
       await assert.rejects(
         saveRegistrationProfile(participant, registrationId, {
           version: 2,

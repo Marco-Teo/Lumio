@@ -208,6 +208,8 @@ model Contest {
   name String
   slug String
   description String @default("")
+  coverData Bytes?
+  coverVersion String?
   createdAt DateTime @default(now())
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   editions Edition[]
