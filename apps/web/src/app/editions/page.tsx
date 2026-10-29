@@ -4,21 +4,20 @@ import { registrationOpen } from '../../lib/participants';
 import { contestCoverUrl } from '../../lib/contest-cover';
 import { ContestCover } from '../components/contest-cover';
 import { Icon } from '../components/ui-icon';
+import {
+  DiscoveryIntro,
+  ParticipationSteps,
+} from '../components/discovery-intro';
 export const dynamic = 'force-dynamic';
 export default async function EditionsPage() {
   const editions = await publishedEditions();
   return (
-    <main className="platform">
-      <nav className="actions">
-        <Link href="/">Home</Link>
-        <Link href="/account">Il tuo account</Link>
-        <Link href="/registrations">Le tue iscrizioni</Link>
-      </nav>
-      <div className="page-heading">
-        <p className="eyebrow">ESPLORA LUMIO</p>
-        <h1>Edizioni pubblicate</h1>
-        <p className="page-description">
-          Trova il tuo prossimo concorso fotografico.
+    <main className="discovery-page">
+      <DiscoveryIntro catalog />
+      <div className="discovery-heading" id="concorsi">
+        <h2>Concorsi da scoprire</h2>
+        <p>
+          Trova il tema che ti rappresenta. Qui trovi le edizioni pubblicate.
         </p>
       </div>
       {!editions.length && <p>Non ci sono ancora edizioni pubblicate.</p>}
@@ -31,11 +30,11 @@ export default async function EditionsPage() {
             <div className="edition-card-content">
               <h2>
                 <Link href={`/editions/${edition.editionId}`}>
-                  {edition.name}
+                  {edition.contestName}
                 </Link>
               </h2>
               <p className="card-subtitle">
-                {edition.contestName} · {edition.organizationName}
+                {edition.name} · {edition.organizationName}
               </p>
               <p
                 className={`badge ${registrationOpen(edition) ? 'badge-sage' : 'badge-neutral'}`}
@@ -47,8 +46,19 @@ export default async function EditionsPage() {
                     : 'Iscrizioni chiuse'}
               </p>
               <p className="edition-dates">
-                Dal {new Date(edition.opensAt).toLocaleString('it-IT')} al{' '}
-                {new Date(edition.closesAt).toLocaleString('it-IT')}
+                {new Date(edition.opensAt).getTime() > Date.now()
+                  ? 'Apertura il '
+                  : 'Iscrizioni fino al '}
+                {new Date(
+                  new Date(edition.opensAt).getTime() > Date.now()
+                    ? edition.opensAt
+                    : edition.closesAt,
+                ).toLocaleDateString('it-IT', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                  timeZone: 'Europe/Rome',
+                })}
               </p>
               <Link
                 className="text-action"
@@ -61,6 +71,7 @@ export default async function EditionsPage() {
           </article>
         ))}
       </div>
+      <ParticipationSteps />
     </main>
   );
 }

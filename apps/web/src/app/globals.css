@@ -1190,3 +1190,192 @@ pre,
     transition: none !important;
   }
 }
+/* Public pages start with a single-column, touch-friendly layout. */
+:root {
+  --ink: #000;
+  --muted: #000;
+  font-family: Arial, Helvetica, sans-serif;
+}
+body {
+  font-size: 16px;
+}
+.wordmark,
+.app-header nav > a {
+  color: #000;
+}
+input,
+textarea,
+select {
+  font-size: 16px;
+  min-width: 0;
+  max-width: 100%;
+}
+button,
+.button-link,
+.home-link {
+  min-height: 44px;
+}
+.discovery-page {
+  max-width: 1440px;
+  padding: 28px 20px 48px;
+}
+.discovery-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  align-items: center;
+  margin-bottom: 44px;
+}
+.discovery-copy h1 {
+  font-size: clamp(2.2rem, 6vw, 3.9rem);
+  line-height: 1.07;
+  letter-spacing: -0.045em;
+  font-weight: 750;
+}
+.discovery-copy .eyebrow {
+  font-size: 11px;
+  margin-bottom: 18px;
+}
+.discovery-description {
+  font-size: 17px;
+  max-width: 480px;
+  margin: 22px 0 26px;
+}
+.discovery-image {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  aspect-ratio: 16 / 10;
+  background: var(--sage);
+}
+.discovery-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.discovery-heading {
+  scroll-margin-top: 100px;
+  margin-bottom: 24px;
+}
+.discovery-heading h2,
+.participation-steps h2 {
+  font-size: clamp(1.65rem, 4vw, 2.3rem);
+  margin-bottom: 8px;
+}
+.discovery-page .edition-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.discovery-page .edition-card h2 {
+  font-size: 1.35rem;
+}
+.discovery-page .card-subtitle,
+.discovery-page .edition-dates {
+  font-size: 15px;
+}
+.discovery-page .text-action {
+  font-size: 15px;
+  min-height: 44px;
+}
+.discovery-page > section.participation-steps[aria-labelledby] {
+  margin-top: 44px;
+  padding: 26px 20px;
+  background: var(--sage);
+  border: 0;
+  border-radius: 12px;
+}
+.participation-steps ol {
+  display: grid;
+  gap: 26px;
+  list-style: none;
+  margin: 28px 0 0;
+  padding: 0;
+}
+.participation-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  min-width: 0;
+}
+.participation-steps li > span {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  background: #dfe9e4;
+  border-radius: 50%;
+}
+.participation-steps h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+.participation-steps li p {
+  font-size: 15px;
+  margin: 0;
+}
+.discovery-account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 28px;
+}
+.discovery-account p {
+  margin: 0;
+}
+@media (min-width: 640px) {
+  .discovery-page {
+    padding: 36px 32px 56px;
+  }
+  .discovery-page .edition-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 900px) {
+  .discovery-page {
+    padding: 48px 40px 64px;
+  }
+  .discovery-intro {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 48px;
+    margin-bottom: 56px;
+  }
+  .discovery-page .edition-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .participation-steps ol {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 30px;
+  }
+  .discovery-page > section.participation-steps[aria-labelledby] {
+    padding: 32px;
+  }
+}
+@media (max-width: 760px) {
+  .editor-toolbar {
+    position: static;
+    flex-wrap: wrap;
+  }
+  .editor-jumps {
+    top: 68px;
+  }
+  .editor-section {
+    scroll-margin-top: 190px;
+  }
+  .field-help-tooltip {
+    max-width: min(260px, calc(100vw - 48px));
+  }
+}
+@media (max-width: 380px) {
+  .header-inner {
+    padding-inline: 12px;
+    gap: 10px;
+  }
+  .app-header nav {
+    gap: 12px;
+  }
+  .discovery-copy h1 {
+    font-size: 2.05rem;
+  }
+}
