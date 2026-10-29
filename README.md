@@ -128,3 +128,7 @@ La pagina della bozza conferma la ricezione, identifica concorso/edizione/organi
 ## Interfaccia
 
 Stile chiaro con verde petrolio, navigazione globale e menu laterale dell'organizzazione. Le iscrizioni sono schede con immagine, concorso, edizione, scadenza e stato; l'editor offre collegamenti rapidi alle sezioni e salvataggio sempre raggiungibile. Layout adattato a desktop e telefono, focus da tastiera e riepiloghi degli errori mantenuti. Nomi e fotografie delle anteprime grafiche non sono dati precaricati nel prodotto.
+
+### Pagine pubbliche mobile first
+
+Home ed Esplora adottano una presentazione editoriale con introduzione, paesaggio illustrativo locale e guida in tre passi. Le schede del catalogo mostrano esclusivamente edizioni realmente pubblicate e le loro copertine facoltative. I testi principali sono neri; la palette salvia/petrolio rimane per superfici e azioni. Layout pubblico a una colonna su telefono, due schede da 640 px, tre da 900 px; test E2E su 320, 390, 768 e 1440 px includono immagini caricate, navigazione e assenza di overflow. L’upload delle fotografie dei partecipanti rimane pianificato: la guida non lo presenta come già disponibile.
