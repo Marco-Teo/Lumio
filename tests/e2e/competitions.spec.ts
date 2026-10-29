@@ -291,7 +291,7 @@ test('organizer configures, versions, publishes and archives an edition', async 
     const publicPage = await page.context().newPage();
     await publicPage.goto('/editions');
     await publicPage
-      .getByRole('link', { name: 'Edizione 2027', exact: true })
+      .getByRole('link', { name: 'Concorso annuale', exact: true })
       .click();
     await expect(
       publicPage.getByRole('heading', { name: 'Edizione 2027', exact: true }),
