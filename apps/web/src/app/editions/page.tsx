@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { publishedEditions } from '../../server/participants';
+import { publishedEditions, closingEditions } from '../../server/participants';
 import { registrationOpen } from '../../lib/participants';
 import { contestCoverUrl } from '../../lib/contest-cover';
 import { ContestCover } from '../components/contest-cover';
@@ -10,10 +10,13 @@ import {
 } from '../components/discovery-intro';
 export const dynamic = 'force-dynamic';
 export default async function EditionsPage() {
-  const editions = await publishedEditions();
+  const [editions, closing] = await Promise.all([
+    publishedEditions(),
+    closingEditions(),
+  ]);
   return (
     <main className="discovery-page">
-      <DiscoveryIntro catalog />
+      <DiscoveryIntro catalog editions={closing} now={Date.now()} />
       <div className="discovery-heading" id="concorsi">
         <h2>Concorsi da scoprire</h2>
         <p>

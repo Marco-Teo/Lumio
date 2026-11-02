@@ -1,8 +1,17 @@
-﻿import Image from 'next/image';
 import Link from 'next/link';
 import { Icon } from './ui-icon';
+import { ClosingContests } from './closing-contests';
+import type { EditionSummary } from '../../server/participants';
 
-export function DiscoveryIntro({ catalog = false }: { catalog?: boolean }) {
+export function DiscoveryIntro({
+  catalog = false,
+  editions,
+  now,
+}: {
+  catalog?: boolean;
+  editions: EditionSummary[];
+  now: number;
+}) {
   return (
     <div className="discovery-intro">
       <div className="discovery-copy">
@@ -30,15 +39,7 @@ export function DiscoveryIntro({ catalog = false }: { catalog?: boolean }) {
           )}
         </div>
       </div>
-      <div className="discovery-image">
-        <Image
-          src="/images/tuscany-hero.webp"
-          alt="Colline toscane e un viale di cipressi nella luce del mattino"
-          width={1536}
-          height={1024}
-          sizes="(min-width: 900px) 55vw, 100vw"
-        />
-      </div>
+      <ClosingContests editions={editions} initialNow={now} />
     </div>
   );
 }

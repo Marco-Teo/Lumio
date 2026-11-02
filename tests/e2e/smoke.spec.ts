@@ -31,18 +31,14 @@ test('public discovery works on phone, tablet and desktop', async ({
         await expect(
           page.getByRole('heading', { name: 'Come partecipare' }),
         ).toBeVisible();
-        const image = page.locator('.discovery-image img');
-        await expect(image).toBeVisible();
-        await expect
-          .poll(() =>
-            image.evaluate((element: HTMLImageElement) => element.naturalWidth),
-          )
-          .toBeGreaterThan(0);
+        await expect(
+          page.getByRole('region', { name: 'Concorsi in scadenza' }),
+        ).toBeVisible();
         expect(
           await page
             .locator('h1')
             .evaluate((element) => getComputedStyle(element).color),
-        ).toBe('rgb(0, 0, 0)');
+        ).toBe('rgb(247, 247, 245)');
         if (
           !process.env.CI &&
           path === '/editions' &&

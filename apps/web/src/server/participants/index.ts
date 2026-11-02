@@ -69,6 +69,11 @@ export async function publishedEditions() {
     EditionSummary[]
   >`SELECT * FROM published_edition_catalog()`;
 }
+export async function closingEditions() {
+  return database().$queryRaw<
+    EditionSummary[]
+  >`SELECT * FROM closing_edition_catalog()`;
+}
 async function publishedDetail(
   tx: Prisma.TransactionClient,
   editionId: string,
@@ -132,7 +137,10 @@ export async function myRegistrations(actor: ParticipantActor) {
       >`SELECT * FROM own_registration_catalog()`,
   );
 }
-async function ownRegistration(tx: Prisma.TransactionClient, id: string) {
+export async function ownRegistration(
+  tx: Prisma.TransactionClient,
+  id: string,
+) {
   const rows = await tx.$queryRaw<
     RegistrationSummary[]
   >`SELECT * FROM own_registration_catalog(${id})`;
