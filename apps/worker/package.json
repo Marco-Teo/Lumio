@@ -9,6 +9,7 @@
   "dependencies": {
     "@lumio/database": "workspace:*",
     "@lumio/jobs": "workspace:*",
+    "@lumio/media": "workspace:*",
     "bullmq": "6.3.17",
     "ioredis": "6.0.0",
     "zod": "4.6.7"

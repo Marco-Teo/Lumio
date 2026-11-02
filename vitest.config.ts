@@ -6,6 +6,7 @@ export default defineConfig({
     include: [
       'apps/web/src/**/*.test.ts',
       'packages/jobs/src/**/*.test.ts',
+      'packages/media/src/**/*.test.ts',
       'scripts/testing/**/*.test.ts',
     ],
   },

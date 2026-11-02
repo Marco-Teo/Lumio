@@ -15,6 +15,7 @@ export default defineConfig([
   },
   globalIgnores([
     '.tools/**',
+    '.data/**',
     '**/.next/**',
     '**/next-env.d.ts',
     '**/src/generated/**',
