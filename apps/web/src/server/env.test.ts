@@ -2,6 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { parseEnvironment } from './env';
 
 describe('environment configuration', () => {
+  it('requires an absolute media volume in hosted production', () => {
+    expect(() =>
+      parseEnvironment({
+        NODE_ENV: 'production',
+        APP_URL: 'https://lumio.example',
+        MEDIA_ROOT: 'relative',
+      }),
+    ).toThrow('Invalid environment configuration: MEDIA_ROOT');
+  });
   it('provides a safe local default', () => {
     expect(parseEnvironment({}).APP_URL).toBe('http://localhost:3000');
   });

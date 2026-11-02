@@ -7,7 +7,7 @@ if (process.env.NODE_ENV === 'production') authenticationEnvironment();
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  transpilePackages: ['@lumio/database', '@lumio/jobs'],
+  transpilePackages: ['@lumio/database', '@lumio/jobs', '@lumio/media'],
   logging: {
     incomingRequests: false,
     serverFunctions: false,

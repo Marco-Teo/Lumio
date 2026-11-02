@@ -11,6 +11,7 @@ import {
   registrationReceiptSchema,
 } from '@lumio/jobs';
 import type { EmailMessage } from '@lumio/jobs/mail';
+import { processPhotoEvent } from './photos';
 
 export type WorkerOptions = {
   databaseUrl: string;
@@ -65,6 +66,24 @@ export function startRuntime(options: WorkerOptions) {
               });
               return;
             }
+            if (event.type === 'photo.process') {
+              if (!event.organizationId || !event.photoRevisionId)
+                throw new UnrecoverableError('INVALID_MEDIA_EVENT');
+              await processPhotoEvent(
+                tx,
+                event.organizationId,
+                event.photoRevisionId,
+              );
+              await tx.outboxEvent.update({
+                where: { id: event.id },
+                data: {
+                  status: 'completed',
+                  attempts: { increment: 1 },
+                  lastErrorCode: null,
+                },
+              });
+              return;
+            }
             if (event.type === 'registration.started') {
               if (!event.organizationId || !event.registrationId)
                 throw new UnrecoverableError('INVALID_EVENT');
@@ -85,7 +104,7 @@ export function startRuntime(options: WorkerOptions) {
               await options.sendEmail({
                 to: receipt.to,
                 subject: 'Lumio — bozza di iscrizione ricevuta',
-                text: `La tua bozza di iscrizione è stata salvata correttamente.\n\nConcorso: ${receipt.contestName}\nEdizione: ${receipt.editionName}\nOrganizzazione destinataria: ${receipt.organizationName}\nContatto organizzatore: ${receipt.contactEmail}\nRiferimento: ${receipt.registrationId}\n\nL’organizzatore può vedere la tua bozza. Non è richiesta un’approvazione dell’admin e non devi attendere una sua risposta.\n\nOra controlla e completa i dati della tua iscrizione:\n${link.toString()}\n\nQuesta email conferma il salvataggio della bozza, non l’iscrizione definitiva. Caricamento delle opere, eventuale pagamento e conferma finale non sono ancora disponibili. Non occorre effettuare pagamenti in questa fase.`,
+                text: `La tua bozza di iscrizione è stata salvata correttamente.\n\nConcorso: ${receipt.contestName}\nEdizione: ${receipt.editionName}\nOrganizzazione destinataria: ${receipt.organizationName}\nContatto organizzatore: ${receipt.contactEmail}\nRiferimento: ${receipt.registrationId}\n\nL’organizzatore può vedere la tua bozza. Non è richiesta un’approvazione dell’admin e non devi attendere una sua risposta.\n\nOra completa i dati della tua iscrizione e aggiungi le opere:\n${link.toString()}\n\nQuesta email conferma il salvataggio della bozza, non l’iscrizione definitiva. Puoi aggiungere le opere e caricare le fotografie nella bozza. Eventuale pagamento e conferma finale non sono ancora disponibili. Non occorre effettuare pagamenti in questa fase.`,
               });
               await tx.outboxEvent.update({
                 where: { id: event.id },
@@ -154,6 +173,28 @@ export function startRuntime(options: WorkerOptions) {
       } catch (error) {
         const finalAttempt =
           error instanceof UnrecoverableError || job.attemptsMade + 1 >= 5;
+        const failedEvent = await db.outboxEvent.findUnique({
+          where: { id: outboxId },
+          select: { type: true, organizationId: true, photoRevisionId: true },
+        });
+        if (
+          finalAttempt &&
+          failedEvent?.type === 'photo.process' &&
+          failedEvent.organizationId &&
+          failedEvent.photoRevisionId
+        ) {
+          await db.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT set_config('app.organization_id',${failedEvent.organizationId},true)`;
+            await tx.$executeRaw`SELECT set_config('app.photo_revision_id',${failedEvent.photoRevisionId},true)`;
+            await tx.photoProcessing.updateMany({
+              where: {
+                revisionId: failedEvent.photoRevisionId!,
+                status: 'pending',
+              },
+              data: { status: 'failed', errorCode: 'PROCESSING_FAILED' },
+            });
+          });
+        }
         await db.outboxEvent.updateMany({
           where: {
             id: outboxId,

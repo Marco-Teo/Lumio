@@ -18,7 +18,7 @@ export type CompetitionActor = {
 };
 export class CompetitionError extends Error {
   constructor(
-    public readonly status: 400 | 409,
+    public readonly status: 400 | 409 | 413 | 429,
     message: string,
   ) {
     super(message);

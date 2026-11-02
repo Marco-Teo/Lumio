@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { z } from 'zod';
 import { sendEmail } from '@lumio/jobs/mail';
 import { startRuntime } from './runtime';
+import { mediaRoot } from '@lumio/media/storage';
 
 const schema = z.object({
   WORKER_DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
@@ -19,6 +20,7 @@ const parsed = schema.safeParse(process.env);
 if (!parsed.success)
   throw new Error('Worker environment is incomplete or invalid');
 const env = parsed.data;
+mediaRoot();
 if (
   process.env.NODE_ENV === 'production' &&
   process.env.LUMIO_LOCAL_TEST !== '1' &&
