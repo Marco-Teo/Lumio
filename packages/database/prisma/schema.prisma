@@ -137,6 +137,7 @@ model OutboxEvent {
   organizationId String?
   invitationId String?
   registrationId String?
+  photoRevisionId String?
   type String
   payload Json
   status String @default("pending")
@@ -147,6 +148,7 @@ model OutboxEvent {
   invitation OrganizationInvitation? @relation(fields: [invitationId], references: [id], onDelete: Restrict)
   registration Registration? @relation(fields: [registrationId], references: [id], onDelete: Restrict)
   @@unique([type, registrationId])
+  @@unique([type, photoRevisionId])
   @@index([status, updatedAt])
   @@map("outbox_event")
 }
@@ -292,10 +294,78 @@ model Registration {
   revision EditionRevision @relation(fields: [organizationId, editionId, editionVersion], references: [organizationId, editionId, version], onDelete: Restrict)
   events RegistrationEvent[]
   outboxEvents OutboxEvent[]
+  entries Entry[]
   @@unique([organizationId, id])
   @@unique([editionId, personId])
   @@index([organizationId, editionId, createdAt])
   @@map("registration")
+}
+
+model Entry {
+  id String @id @default(uuid())
+  organizationId String
+  registrationId String
+  sectionCode String
+  title String
+  active Boolean @default(true)
+  version Int @default(1)
+  anonymousCode String @unique @default(uuid())
+  createdAt DateTime @default(now())
+  registration Registration @relation(fields: [organizationId, registrationId], references: [organizationId, id], onDelete: Restrict)
+  photos Photo[]
+  @@unique([organizationId, registrationId, id])
+  @@index([organizationId, registrationId])
+  @@map("entry")
+}
+
+model Photo {
+  id String @id @default(uuid())
+  organizationId String
+  registrationId String
+  entryId String
+  position Int
+  title String?
+  currentRevision Int @default(0)
+  active Boolean @default(true)
+  entry Entry @relation(fields: [organizationId, registrationId, entryId], references: [organizationId, registrationId, id], onDelete: Restrict)
+  revisions PhotoRevision[]
+  @@unique([entryId, position])
+  @@unique([organizationId, registrationId, id])
+  @@map("photo")
+}
+
+model PhotoRevision {
+  id String @id @default(uuid())
+  organizationId String
+  registrationId String
+  photoId String
+  number Int
+  storageKey String @unique
+  sha256 String
+  bytes Int
+  rules Json
+  createdAt DateTime @default(now())
+  photo Photo @relation(fields: [organizationId, registrationId, photoId], references: [organizationId, registrationId, id], onDelete: Restrict)
+  processing PhotoProcessing?
+  @@unique([photoId, number])
+  @@unique([organizationId, registrationId, id])
+  @@unique([organizationId, id])
+  @@map("photo_revision")
+}
+
+model PhotoProcessing {
+  revisionId String @id
+  organizationId String
+  registrationId String
+  status String @default("pending")
+  errorCode String?
+  previewKey String?
+  width Int?
+  height Int?
+  format String?
+  revision PhotoRevision @relation(fields: [organizationId, registrationId, revisionId], references: [organizationId, registrationId, id], onDelete: Restrict)
+  @@unique([organizationId, registrationId, revisionId])
+  @@map("photo_processing")
 }
 
 model RegistrationEvent {
