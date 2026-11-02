@@ -16,7 +16,7 @@ AuditEvent collega attore, membership e organizzazione. Una FK composita impedis
 - lumio_app: runtime senza superuser, BYPASSRLS, proprietà delle tabelle o facoltà di assegnare privilegi piattaforma. Il provisioning organizzativo passa da policy specifiche per Super Admin autenticati con MFA.
 - ADMIN_DATABASE_URL: solo per bootstrap locale e test con database temporanei.
 
-pnpm db:provision crea i ruoli e assegna lo schema al migrator; richiede privilegi amministrativi. pnpm db:migrate applica nove migrazioni: quattro foundation/provisioning, due F1, due F2 e una per le copertine facoltative dei concorsi. Le policy e i vincoli SQL aggiuntivi sono mantenuti esplicitamente nelle migrazioni, non da db push.
+pnpm db:provision crea i ruoli e assegna lo schema al migrator; richiede privilegi amministrativi. pnpm db:migrate applica tredici migrazioni: quattro foundation/provisioning, due F1, due F2, una per le copertine, una per i concorsi in scadenza, due per opere/fotografie e relativi vincoli e una per i titoli fotografici. Le policy e i vincoli SQL aggiuntivi sono mantenuti esplicitamente nelle migrazioni, non da db push.
 
 Il seed è ripetibile, vietato in NODE_ENV=production e privo di password demo. Il test di migrazione prova l'intera sequenza da database vuoto e rimuove solo il database temporaneo generato dal test.
 
@@ -44,7 +44,7 @@ AuditEvent conserva anche before/after JSON. Eliminazione sezioni limitata alle 
 
 ## Aggiunte F2
 
-Person aggiunge campi personali facoltativi e profileVersion. Registration è distinta dall'account, dalla persona e dalle future opere. FK composita (organizationId, editionId, editionVersion) alla revisione pubblicata e vincolo univoco persona/edizione impediscono riferimenti incrociati e duplicati. ProfileSnapshot e configurationSnapshot non vengono aggiornati al cambiare del profilo globale. Versione documenti e timestamp di accettazione/lettura restano bloccati dal trigger runtime.
+Person aggiunge campi personali facoltativi e profileVersion. Registration è distinta dall'account, dalla persona e dalle opere e fotografie introdotte in F3. FK composita (organizationId, editionId, editionVersion) alla revisione pubblicata e vincolo univoco persona/edizione impediscono riferimenti incrociati e duplicati. ProfileSnapshot e configurationSnapshot non vengono aggiornati al cambiare del profilo globale. Versione documenti e timestamp di accettazione/lettura restano bloccati dal trigger runtime.
 
 RegistrationEvent è append-only per il runtime e usa FK composita alla stessa organizzazione/iscrizione. Solo il partecipante può modificare il proprio snapshot durante la finestra aperta; gli admin hanno lettura tenant con MFA. Il worker non riceve nuovi privilegi. Catalogo e discovery usano funzioni SECURITY DEFINER con search_path fissato e EXECUTE non pubblico; espongono solo dati pubblicati o dell'identità corrente.
 
@@ -53,3 +53,13 @@ lumio_test è un database locale distinto. Condivide i nomi dei ruoli del cluste
 La migrazione delle ricevute aggiunge a Registration gli snapshot di nome organizzazione, concorso e contatto, valorizzandoli anche sulle bozze esistenti. OutboxEvent supporta registration.started con FK composita allo stesso tenant e univocità tipo/iscrizione. Le policy consentono al proprietario di preparare e consultare la propria ricevuta; l'API restituisce solo lo stato, non il payload cifrato. Il worker non ottiene accesso a registrazioni o persone.
 
 La nona migrazione aggiunge coverData bytea e coverVersion nullable al concorso: entrambi assenti o entrambi valorizzati, con limite 1 MB e digest di 64 caratteri hex. RLS amministrativa resta invariata. Le capability dei cataloghi restituiscono ID/digest e scadenza per comporre le schede, senza byte dell'immagine. visible_contest_cover permette il derivato a ospiti solo se esiste un'edizione pubblicata in organizzazione attiva; il proprietario di un'iscrizione può consultarlo anche dopo archiviazione. Il worker non riceve privilegi sulle copertine.
+
+## Concorsi in scadenza
+
+La migrazione 10 aggiunge `closing_edition_catalog()`: capability pubblica limitata ai dati del catalogo, solo edizioni pubblicate di organizzazioni attive con apertura <= ora corrente e chiusura > ora corrente. Seleziona l’edizione più prossima per ogni concorso, ordina per timestamp effettivo e limita a cinque dopo il filtro (indipendente dal limite 100 del catalogo generale). Privilegi esclusivamente a `lumio_app`, non PUBLIC né worker. Non espone dati personali o byte delle copertine.
+
+## Migrazioni 11–12 — opere e fotografie
+
+Entry, Photo, PhotoRevision e PhotoProcessing sono entità distinte con FK composite tenant/iscrizione. Entry punta al codice sezione nello snapshot immutabile dell’iscrizione; Photo ha posizione e puntatore numerico alla revisione corrente. Originali e righe PhotoRevision sono append-only per app e worker. Il proprietario può modificare titolo/attività e sostituire logicamente le fotografie solo durante la finestra aperta. Le revisioni hanno sequenza crescente, limiti e SHA-256. PhotoProcessing nasce pending; solo il worker del job può passare a ready/rejected/failed. L’outbox photo.process contiene solo revisionId e non è leggibile dai partecipanti. I limiti di quota e sequenza sono applicati anche da trigger; i file restano fuori da PostgreSQL.
+
+La migrazione 13 aggiunge il titolo facoltativo della fotografia, vincolato a 1–200 caratteri se presente. Il ruolo applicativo riceve solo UPDATE della nuova colonna; le policy di proprietà/finestra e i vincoli dei genitori restano invariati. L’assenza del titolo produce la dicitura Foto N nel portfolio. Il titolo è metadato dell’entità Photo e non appartiene alla revisione immutabile del file.

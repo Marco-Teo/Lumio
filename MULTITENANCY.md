@@ -18,7 +18,7 @@ Test reali con due organizzazioni: letture e scritture incrociate, identificator
 
 Solo filtri applicativi sono insufficienti come unica difesa. Schema per tenant complica le migrazioni; database per tenant aumenta costi e gestione. Schema condiviso con RLS resta la scelta iniziale.
 
-L'isolamento di fotografie, export e job sarà aggiunto con quei moduli. La console piattaforma è ora disponibile con policy separate; non vengono esposte anagrafiche globali agli organizzatori.
+L’isolamento fotografico è implementato in F3; export giuria e relativi job restano pianificati. La console piattaforma è disponibile con policy separate; non vengono esposte anagrafiche globali agli organizzatori.
 
 ## Confini della piattaforma e del worker
 
@@ -41,3 +41,7 @@ Un partecipante non diventa membro dell'organizzazione quando si iscrive. La sua
 La FK verso la revisione include organizationId; gli eventi usano un'altra FK composita. Gli admin vedono gli snapshot locali delle iscrizioni del proprio tenant, non l'anagrafica Person globale. Le prove con due organizzazioni e due partecipanti verificano letture, modifiche, sospensione e accesso worker negato. Il partecipante conserva consultazione dei propri documenti anche dopo chiusura o sospensione; le mutazioni sono bloccate.
 
 Le copertine appartengono al Contest nel suo tenant. L'API di gestione applica gli stessi confini admin; l'elenco non contiene byte. Una capability restituisce il derivato solo per un concorso pubblico attivo o per una propria iscrizione, senza concedere letture generiche di concorsi di altri tenant. Le bozze non sono visibili agli ospiti anche conoscendone l'ID.
+
+## Media delle opere — F3
+
+Ogni opera/fotografia/revisione include organizationId e registrationId con FK composite. `owns_media_registration` verifica proprietario verificato e contesto tenant; `media_registration_open` aggiunge la finestra dell’edizione attiva. Non vengono riutilizzate policy degli amministratori per le immagini. Il worker ha letture solo sulla revisione specifica del job e aggiornamento dei soli campi operativi di PhotoProcessing. Nessun accesso a dati personali o originali attraverso il catalogo pubblico. Storage partizionato per UUID organizzazione, percorso non derivato da nomi file o dati forniti dall’utente.

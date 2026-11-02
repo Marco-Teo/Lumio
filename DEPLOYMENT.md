@@ -52,3 +52,19 @@ Per i test locali usare `pnpm env:test`, avviare mailpit-test e poi `pnpm test:s
 ## Upgrade interfaccia e copertine
 
 Installazione con lockfile, nona migrazione e generazione del client prima di riavviare il web. Nessuna variabile ambiente o risorsa cloud nuova. Sharp è una dipendenza runtime esplicita del web: mantenere il build nativo approvato già nel workspace pnpm. Le copertine sono incluse nei backup PostgreSQL; non dipendono dal disco del server web. Non è stato attivato storage fotografico per le opere.
+
+## Upgrade carosello concorsi
+
+Applicare anche la migrazione `202611020010_closing_editions` prima di avviare il web: Home ed Esplora usano ora la funzione SQL dei concorsi in scadenza e sono dinamiche. Nessuna nuova variabile ambiente o risorsa esterna. La migrazione non modifica concorsi, iscrizioni o fotografie esistenti.
+
+## Upgrade F3 e storage privato
+
+Eseguire installazione con lockfile, `pnpm db:migrate` (migrazioni 11 e 12), `pnpm db:generate`, poi riavviare web e worker. In locale non servono nuove variabili: entrambi usano `.data/media` nella root; non usare questo percorso come directory pubblica. I test ignorano MEDIA_ROOT e usano `.data/media-test`, con i medesimi percorsi tra processo web e worker. Aggiungere al backup sia database sia originali/derivati mantenendo coerenti i riferimenti; i soli backup PostgreSQL non bastano più per F3.
+
+Per hosting è obbligatorio `MEDIA_ROOT` assoluto su volume durevole e privato condiviso, con identiche chiavi per web e worker. La topologia Render a servizi separati del Blueprint non condivide questo filesystem: non rilasciarla come soluzione F3 senza uno storage condiviso/adapter remoto e una verifica di restore. Nessun servizio è stato attivato. Restare su singola replica; limiti upload attualmente in memoria. Dimensionare la RAM per decoder e concurrency worker (massimo tre job), provando il carico prima della produzione.
+
+Gli errori transitori di storage seguono cinque tentativi della coda. Errori fotografici sono esiti rejected senza retry; errori esauriti diventano failed con messaggio comprensibile. Il partecipante può ricaricare una nuova revisione. Non azzerare o riscrivere revisioni per riparare un file. I file orfani da crash prima del commit richiedono riconciliazione operativa; la retention automatica non è implementata.
+
+## Upgrade titoli e interazione foto
+
+Applicare anche `202611020013_photo_titles` e rigenerare il client prima di aggiornare il web. Nessuna nuova variabile ambiente, dipendenza o risorsa. I titoli esistenti delle opere restano invariati; le fotografie precedenti hanno titolo nullo e vengono mostrate con la loro posizione. Trascinamento, preparazione dei nomi e icona cestino non cambiano la conservazione degli originali.

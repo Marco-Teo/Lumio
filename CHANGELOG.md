@@ -89,3 +89,37 @@ La bozza ora mostra conferma di ricezione, organizzazione destinataria, contatto
 ## Prossime funzionalità — non implementate
 
 Non sono ancora disponibili opere, caricamento fotografie, revisioni fotografiche, anonimizzazione, giurie, pagamenti o conferma definitiva dell'iscrizione. Esistono bozze di iscrizione con dati e documenti versionati. Retention, portabilità, cancellazione/anonimizzazione e paginazione completa richiedono lavoro ulteriore prima del pilota. I principi architetturali approvati restano invariati.
+
+## Carosello in scadenza e palette pubblicitaria
+
+- Home ed Esplora mostrano fino a cinque concorsi distinti con iscrizioni aperte, per scadenza crescente; solo organizzazioni attive ed edizioni pubblicate.
+- Copertina reale o segnaposto, nome, scadenza e collegamento all’edizione; un risultato fisso e stato vuoto esplicito. Rotazione, pausa, controlli touch/tastiera e rispetto delle preferenze di movimento.
+- Palette globale aggiornata a fondo #101114, superficie #202126, oro #E4AC4F, crema #F5E6C8 e bianco #F7F7F5; inclusi form, feedback, account e console.
+- Migrazione 10 con capability SQL ristretta; nessun servizio o dipendenza aggiuntivi. Test E2E per selezione, duplicati, ordine, esclusione bozze/future/scadute/archiviate, sospensione, pausa, rotazione e scadenza a pagina aperta.
+
+## F3 — opere e fotografie locali
+
+- Opere per sezione, fotografia singola e portfolio; titolo modificabile e rimozione logica.
+- Originali privati create-only, SHA-256, revisioni append-only, download del proprietario, pipeline outbox/BullMQ e anteprime WebP senza metadati.
+- Controlli formato, dimensioni file/pixel, orientamento, profilo, corruzione e limiti operativi; feedback, progresso e polling nella bozza mobile first.
+- Migrazioni 11–12 con RLS, FK composite, quota e sequenza revisioni; package media condiviso da web/worker senza nuovi servizi cloud.
+- Storage isolato dei test; fuori scope pagamento, conferma definitiva, riordino portfolio, viste ed export giuria. Hosting a servizi separati richiede storage privato condiviso prima del rilascio.
+
+Verifiche F3: installazione frozen/offline, lint, formatting check, typecheck, 59 test unitari, 51 test di integrazione, 9 E2E e build completati. Suite fotografiche con soli dati sintetici e storage di test isolato; verificati portfolio, revisione di file corrotto e accessi negati ad altri utenti. Web e worker locali aggiornati.
+
+## Caricamento multiplo delle fotografie
+
+- Selezione multipla nei portfolio, con controllo preventivo dei posti disponibili; importazione multipla nelle sezioni single con un’opera separata per fotografia.
+- Due upload concorrenti, progresso/esito per file e retry dei soli errori; la perdita della risposta dopo il salvataggio non duplica originali, revisioni o opere.
+- Nessuna nuova dipendenza o migrazione. Nomi file mostrati solo nella coda browser; i titoli delle nuove opere sono generici e modificabili.
+
+Verifiche aggiornate: 63 test unitari, 52 di integrazione e 9 E2E superati, oltre a lint, formattazione, typecheck e build. Il test browser simula una risposta persa dopo il salvataggio e verifica che il retry non aumenti il numero di opere o revisioni.
+
+## Trascinamento, nomi e rimozione delle opere
+
+- Riquadri drag/drop accessibili anche tramite selettore file, per aggiunte e sostituzioni; errori chiari per selezioni eccessive e cartelle intere.
+- Scelta esplicita tra titoli individuali (uno per ogni foto) e nome comune con foto numerate, rispettando la distinzione tra foto singole e portfolio.
+- Cestino nel titolo dell’opera per rimuovere tutto il riquadro; la rimozione della singola foto elimina soltanto la sua scheda. Originali e revisioni preservati.
+- Migrazione 13 per il titolo fotografico facoltativo, aggiornabile come metadato senza riscrivere i file.
+
+Verifiche: 63 unit test, 53 test di integrazione e 9 E2E superati, oltre a lint, formattazione, typecheck e build. Il browser verifica drag/drop, titoli mancanti, persistenza dei titoli Unicode, modalità gruppo, cestino e scomparsa delle schede, anche a 320 px.

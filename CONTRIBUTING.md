@@ -25,3 +25,7 @@ Per F1, ogni modifica deve preservare snapshot, vincoli tenant e state machine. 
 Per F2 mantenere separati profilo globale e snapshot dell'iscrizione; non aggiornare automaticamente uno dall'altro. I riferimenti ai documenti accettati restano immutabili per il runtime. Non aggiungere opere, fotografie, pagamenti o stati di conferma prima dei relativi moduli. Provare chiusura temporale, utente estraneo, accesso admin senza MFA, concorrenza e vincoli tenant.
 
 Per l'interfaccia mantenere focus, etichette ed errori accessibili, verificando desktop e telefono. Le copertine dei concorsi sono facoltative e modificabili, distinte dai futuri originali delle opere. Non esporre coverData nei DTO degli elenchi. I test usano una piccola immagine sintetica e salvano anteprime locali ignorate da Git in .tools/design-preview; nessuna fotografia utente nei test o negli artifact CI.
+
+## Verifiche media
+
+Il package `@lumio/media` è condiviso da web e worker per storage e pipeline. I test unitari coprono byte originali, metadati dei derivati, formati, orientamento, dimensioni, limiti stream e concorrenza. I test di integrazione verificano RLS, revisioni append-only, retry idempotenti, chiusura iscrizioni e assenza di accessi incrociati. Gli E2E caricano davvero file sintetici in fotografia singola e portfolio attraverso il browser e attendono il worker isolato. Non usare foto reali nei fixture. `.data/` non va aggiunta a Git o agli artifact CI.

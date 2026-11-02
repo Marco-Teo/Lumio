@@ -1,4 +1,6 @@
 # Prepared staging blueprint only. Applying it creates paid resources.
+# F3 files require shared durable private storage; these separate services do
+# not share the local media directory. Adapt storage before deploying F3.
 # Provision database roles/migrations separately before enabling the web service.
 services:
   - type: web

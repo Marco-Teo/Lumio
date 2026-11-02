@@ -1,6 +1,6 @@
 # Sicurezza
 
-## Implementato fino a F2
+## Implementato fino a F3 locale
 
 Autenticazione Better Auth con password di almeno 12 caratteri, hashing della libreria, verifica email, reset con token a scadenza, revoca delle sessioni al reset e logout. Cookie HttpOnly/SameSite e Secure con origine HTTPS. Nessuna cookie cache per sessioni revocabili.
 
@@ -22,7 +22,7 @@ MFA non è ancora disattivabile dalla UI; recupero accesso tramite i codici forn
 
 ## Pianificato
 
-Storage privato, signed URL, originali immutabili, limiti decoder, worker confinato, pipeline e anonimizzazione. F2 registra l'accettazione del regolamento e la lettura della privacy versionati; retention, portabilità e cancellazione/anonimizzazione restano da completare prima del pilota con partecipanti reali.
+F3 implementa storage locale privato, originali immutabili, limiti decoder, worker con scope per revisione e anteprime prive di metadati. Restano pianificati storage remoto condiviso, signed URL e viste/export giuria. F2 registra l'accettazione del regolamento e la lettura della privacy versionati; retention, portabilità e cancellazione/anonimizzazione restano da completare prima del pilota con partecipanti reali.
 
 ## Inviti e privilegi piattaforma
 
@@ -57,3 +57,9 @@ La ricevuta di bozza usa destinatario verificato della sessione e riferimenti se
 Upload e rimozione richiedono identità verificata, MFA, membership admin, organizzazione attiva e Origin corretto. La lettura del corpo è limitata prima del parsing multipart. Il decoder accetta solo firme JPEG/PNG/WebP, file statici fino a 3 MB / 12 megapixel, con timeout e output WebP limitato a 1 MB. Nessun URL remoto da scaricare, SVG, nome file conservato o metadato EXIF nel derivato.
 
 Le anteprime di bozza usano l'endpoint amministrativo protetto. La lettura pubblica è una capability ristretta alle edizioni pubblicate/attive; un partecipante autenticato mantiene accesso alle copertine dei propri concorsi dopo archiviazione. Risposte private con ETag, Vary Cookie e nosniff; nessuna cache condivisa per dati autorizzati da sessione. Le fotografie delle opere e la loro futura pipeline privata restano fuori da questo incremento.
+
+## Fotografie dei partecipanti — F3 locale
+
+Le API di opere e file richiedono sessione verificata e proprietà dell’iscrizione; per le mutazioni verificano Origin e intervallo temporale con lock condivisi su organizzazione/edizione. Nessuna autorizzazione tramite solo ID opaco. RLS e FK composite proteggono ogni tabella media; nessun permesso file ad admin/giuria in questa fase. Il worker non ottiene SELECT sulle persone: imposta tenant e revisionId per il singolo job. Originali non serviti da directory pubblica; endpoint privati no-store, download attachment/octet-stream per originali e nosniff/CSP restrittiva. Nome originale non conservato, metadati personali non copiati nei log o negli esiti.
+
+Limiti per file/decoder/quota e concorrenza (2 upload per utente, 8 globali, 30/minuto per utente) evitano upload illimitati sulla singola replica. Prima di scalare il limiter deve diventare condiviso. Il controllo di formato non è una scansione antivirus: soltanto i derivati decodificati vengono visualizzati; l’originale resta privato. Il processo server deve poter accedere allo storage condiviso, non al repository pubblico. In produzione `MEDIA_ROOT` assoluto è obbligatorio; volume e backup devono essere cifrati/configurati dall’operatore. Anonimizzazione qui significa derivati privi di EXIF/GPS/ICC e chiavi opache, non rimozione di firme o dati impressi nei pixel. Viste e autorizzazioni della giuria restano future.

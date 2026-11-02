@@ -1,6 +1,6 @@
 # Lumio
 
-Piattaforma per concorsi fotografici. Stato: **F2 — profilo partecipante e bozze di iscrizione**.
+Piattaforma per concorsi fotografici. Stato: **F3 — opere, originali e anteprime fotografiche locali**.
 
 ## Implementato
 
@@ -69,7 +69,7 @@ apps/web contiene UI e moduli server. packages/database possiede schema, migrazi
 
 [Architettura](ARCHITECTURE.md) · [Database](DATABASE.md) · [Sicurezza](SECURITY.md) · [Tenancy](MULTITENANCY.md) · [Deployment](DEPLOYMENT.md) · [Contribuire](CONTRIBUTING.md).
 
-F0.3 e F1 sono implementate. F2 aggiunge profili, catalogo e bozze di iscrizione; opere, fotografie, pagamenti, giuria e conferma definitiva restano successivi. Nessuna infrastruttura cloud è stata attivata.
+F0.3 e F1 sono implementate. F2 aggiunge profili, catalogo e bozze di iscrizione; F3 aggiunge opere e fotografie con elaborazione asincrona locale; pagamenti, giuria e conferma definitiva restano successivi. Nessuna infrastruttura cloud è stata attivata.
 
 ## Console Lumio e inviti
 
@@ -111,7 +111,7 @@ Creare il concorso permanente e poi una o più edizioni. La bozza può essere in
 
 Ogni salvataggio dell'edizione crea una revisione completa, consultabile da **Versioni salvate**. La pubblicazione richiede descrizione, quattro date ordinate, regolamento, privacy e almeno una sezione valida; congela la configurazione. Dopo la pubblicazione è disponibile soltanto l'archiviazione. Da F2, le edizioni pubblicate e attive compaiono nel catalogo pubblico e accettano bozze di iscrizione soltanto tra apertura inclusa e chiusura esclusa.
 
-Il concorso può avere un'immagine **facoltativa**, caricabile anche da **Modifica concorso**. Formati JPEG/PNG/WebP statici, fino a 3 MB e 12 megapixel. La copertina viene ridimensionata (massimo 1200×800), convertita in WebP e ripulita dai metadati; è salvata nel database, senza storage cloud aggiuntivo. È sostituibile o rimovibile e appare nel catalogo e in **Le mie iscrizioni**. Senza immagine viene mostrato un segnaposto neutro. La copertina è un elemento del concorso, distinto dalle fotografie delle opere: il caricamento delle fotografie dei partecipanti non è ancora disponibile.
+Il concorso può avere un'immagine **facoltativa**, caricabile anche da **Modifica concorso**. Formati JPEG/PNG/WebP statici, fino a 3 MB e 12 megapixel. La copertina viene ridimensionata (massimo 1200×800), convertita in WebP e ripulita dai metadati; è salvata nel database, senza storage cloud aggiuntivo. È sostituibile o rimovibile e appare nel catalogo e in **Le mie iscrizioni**. Senza immagine viene mostrato un segnaposto neutro. La copertina è un elemento del concorso, distinto dalle fotografie delle opere: le fotografie dei partecipanti hanno ora uno storage privato separato, descritto in F3.
 
 Per aggiornare un ambiente F0.3 già configurato: `pnpm db:migrate`, poi riavviare il web. Non rigenerare i file ambiente. Non sono necessarie dipendenze o servizi nuovi.
 
@@ -127,8 +127,18 @@ La pagina della bozza conferma la ricezione, identifica concorso/edizione/organi
 
 ## Interfaccia
 
-Stile chiaro con verde petrolio, navigazione globale e menu laterale dell'organizzazione. Le iscrizioni sono schede con immagine, concorso, edizione, scadenza e stato; l'editor offre collegamenti rapidi alle sezioni e salvataggio sempre raggiungibile. Layout adattato a desktop e telefono, focus da tastiera e riepiloghi degli errori mantenuti. Nomi e fotografie delle anteprime grafiche non sono dati precaricati nel prodotto.
+Palette scura con oro, crema e bianco caldo, navigazione globale e menu laterale dell'organizzazione. Le iscrizioni sono schede con immagine, concorso, edizione, scadenza e stato; l'editor offre collegamenti rapidi alle sezioni e salvataggio sempre raggiungibile. Layout adattato a desktop e telefono, focus da tastiera e riepiloghi degli errori mantenuti. Nomi e fotografie delle anteprime grafiche non sono dati precaricati nel prodotto.
 
 ### Pagine pubbliche mobile first
 
-Home ed Esplora adottano una presentazione editoriale con introduzione, paesaggio illustrativo locale e guida in tre passi. Le schede del catalogo mostrano esclusivamente edizioni realmente pubblicate e le loro copertine facoltative. I testi principali sono neri; la palette salvia/petrolio rimane per superfici e azioni. Layout pubblico a una colonna su telefono, due schede da 640 px, tre da 900 px; test E2E su 320, 390, 768 e 1440 px includono immagini caricate, navigazione e assenza di overflow. L’upload delle fotografie dei partecipanti rimane pianificato: la guida non lo presenta come già disponibile.
+Home ed Esplora presentano i concorsi reali in scadenza e una guida in tre passi. La palette condivisa con i materiali pubblicitari usa fondo #101114, superfici #202126, oro #E4AC4F, crema #F5E6C8 e bianco caldo #F7F7F5. I testi chiari mantengono il contrasto sui fondi scuri. Layout a una colonna su telefono, due schede da 640 px, tre da 900 px; test E2E a 320, 390, 768 e 1440 px. Il carosello mostra al massimo cinque concorsi con iscrizioni aperte, ordinati per scadenza: una sola edizione per concorso, la più prossima. Un risultato resta fisso, nessuno mostra un collegamento al catalogo. Con più risultati sono disponibili rotazione ogni 7 secondi, pausa, frecce, swipe e rispetto della riduzione del movimento. La selezione viene aggiornata a ogni apertura della pagina; il client rimuove i risultati alla scadenza anche a pagina aperta. Le fotografie dei partecipanti sono gestite nella bozza di iscrizione, come descritto in F3.
+
+## Opere e fotografie — F3 locale
+
+Da **Le mie iscrizioni → Apri bozza → Le tue opere**, scegliere una sezione e creare l’opera. Una fotografia singola contiene un’immagine; un portfolio rispetta min/max della sezione. È possibile trascinare una o più immagini dalla cartella nei riquadri dedicati, oppure selezionarle dal dispositivo. Nei portfolio occupano le posizioni libere della stessa opera; nelle sezioni singole **Carica più fotografie** crea un’opera per file. Prima del caricamento multiplo si sceglie **Un titolo per ogni foto** (tutti obbligatori) oppure **Nome comune e foto numerate**: nel portfolio basta il nome del gruppo e le foto sono numerate; nelle sezioni singole i titoli diventano “Nome — Foto 1”, “Nome — Foto 2”. La coda trasferisce al massimo due file contemporaneamente e mostra progresso ed errori individuali; **Riprova file non riusciti** conserva gli upload riusciti, senza duplicare opere o revisioni. Se la selezione supera i posti disponibili viene rifiutata prima dell’upload, senza scartare file silenziosamente. L’esito del trasferimento è distinto dai controlli fotografici del worker. Il cestino accanto al titolo rimuove l’intera opera con tutte le sue schede; rimuovere una foto fa sparire soltanto la relativa scheda. La cancellazione resta logica e conserva originali e revisioni. È possibile correggere titoli e sostituire immagini: ogni sostituzione aggiunge una revisione senza modificare gli originali precedenti.
+
+Sono accettati JPEG/PNG/TIFF se consentiti dal regolamento. Limiti operativi iniziali: 25 MB per file (o il limite più restrittivo dell’edizione), 40 megapixel, una sola pagina/fotogramma, 100 opere, 20 revisioni per fotografia e 1 GB complessivo per iscrizione. Le anteprime WebP sono generate dal worker e prive di EXIF/GPS/ICC. L’originale conserva esattamente i byte ricevuti. Gli errori di formato/dimensioni/leggibilità/profilo sono mostrati nella bozza; una revisione rifiutata non cancella quella precedente.
+
+**Storage locale:** `.data/media`, fuori da `public` e ignorato da Git. Web e worker devono usare lo stesso disco. I test usano esclusivamente `.data/media-test` e ignorano eventuale `MEDIA_ROOT` di sviluppo/produzione. Servono PostgreSQL, Redis e worker accesi; senza worker l’originale è salvato e l’anteprima rimane in attesa. Nessun nuovo servizio cloud. Prima del rilascio su servizi separati è necessario uno storage privato condiviso: il Blueprint Render esistente non è pronto per i file F3.
+
+La conformità delle fotografie non equivale alla conferma dell’iscrizione. Pagamenti, invio definitivo, riordino portfolio e accesso/esportazione per la giuria restano pianificati. Gli organizzatori non ricevono in questa fase accesso ai file dei partecipanti.

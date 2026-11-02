@@ -1,8 +1,8 @@
 # Architettura
 
-## Implementato fino a F2
+## Implementato fino a F3 locale
 
-Monorepo pnpm con apps/web (Next.js App Router, React, TypeScript strict) e due package condivisi: packages/database e packages/jobs. Il confine database esiste perché schema e client sono consumati dal web, dalle migrazioni e dai comandi operativi.
+Monorepo pnpm con apps/web (Next.js App Router, React, TypeScript strict) e tre package condivisi: packages/database, packages/jobs e packages/media. Il confine database esiste perché schema e client sono consumati dal web, dalle migrazioni e dai comandi operativi.
 
 Moduli server del web: auth (Better Auth), authorization, tenancy e adapter email. Interfaccia minimale con CSS e font di sistema. Nessun package UI, contracts o config.
 
@@ -16,7 +16,7 @@ withOrganization imposta utente e organizzazione in una transazione, verifica me
 
 La console /platform e il worker sono implementati. packages/jobs condivide contratti, protezione payload e trasporto email, effettivamente usati da web e worker. Il rate limiting attuale è in memoria e il deployment è limitato a una replica; prima di scalare occorre uno store condiviso.
 
-Concorso permanente e più edizioni sono implementati in F1; Account, Persona e Iscrizione restano entità distinte in F2, con dati iscrizione locali. Restano requisiti per i moduli futuri Opera e Fotografia distinte, originali immutabili, revisioni fotografiche, pipeline asincrona idempotente, anonimizzazione ed export giuria separato da quello amministrativo.
+Concorso permanente e più edizioni sono implementati in F1; Account, Persona e Iscrizione restano entità distinte in F2, con dati iscrizione locali. F3 implementa Opera, Fotografia e Revisioni distinte, originali immutabili e pipeline asincrona locale idempotente con anteprime prive di metadati. Accessi e copie dedicati alla giuria ed export separati rimangono pianificati.
 
 ## Pipeline di provisioning
 
@@ -58,8 +58,24 @@ I runner caricano soltanto .env.test.local, validano destinazioni locali note e 
 
 Componenti locali nel web per header, navigazione organizzativa, icone SVG e copertine; nessun package UI o libreria icone aggiuntivi. Colori e spaziature sono definiti nel CSS globale, con layout responsive. I collegamenti dell'editor spostano il focus visivo tra sezioni senza nascondere campi o perdere dati non salvati.
 
-La copertina amministrativa è facoltativa e distinta dai media delle opere. Sharp 0.35.5 (già presente indirettamente con Next, ora dipendenza diretta esplicita) valida e ridimensiona l'immagine entro limiti stretti. Per il bootstrap, il solo derivato WebP è conservato in Contest.coverData (massimo 1 MB), con SHA-256 per cache e audit. Non si conserva l'originale di questa copertina modificabile; il requisito di originali immutabili continua a valere per le future fotografie dei partecipanti.
+La copertina amministrativa è facoltativa e distinta dai media delle opere. Sharp 0.35.5 (già presente indirettamente con Next, ora dipendenza diretta esplicita) valida e ridimensiona l'immagine entro limiti stretti. Per il bootstrap, il solo derivato WebP è conservato in Contest.coverData (massimo 1 MB), con SHA-256 per cache e audit. Non si conserva l'originale di questa copertina modificabile; il requisito di originali immutabili continua a valere per le fotografie dei partecipanti implementate in F3.
 
 La scelta bytea evita un servizio di storage anticipato e rende la copertina persistente anche su hosting senza disco durevole. Prima di grandi volumi sarà da valutare object storage dedicato. Liste e audit contengono solo il digest, mai il contenuto binario. Creazione concorso e caricamento facoltativo sono richieste distinte: se l'immagine fallisce, il concorso resta salvato e il modulo permette il retry senza duplicarlo.
 
 La cache globale del client database confronta la forma degli enum scalari generati, stabile tra bundle server diversi. Evita di disconnettere pool ancora in uso quando una pagina e una API importano factory equivalenti con identità JavaScript diverse, mantenendo l'invalidazione quando cambiano modelli o campi.
+
+Home ed Esplora sono dinamiche e leggono la capability `closing_edition_catalog()` prima del rendering. Il carosello riceve esclusivamente riepiloghi pubblici serializzabili; non carica immagini di concorsi nascosti e non richiede dipendenze aggiuntive. I timestamp sono confrontati in PostgreSQL; le date sono visualizzate in Europe/Rome. Il client rimuove le slide scadute, mette in pausa al focus/hover e non ruota con riduzione del movimento. Con un solo concorso non presenta controlli di rotazione. L’immagine illustrativa precedente non è più usata nell’introduzione.
+
+## Media condivisi — F3
+
+`packages/media` è un confine reale condiviso dal web (storage create-only e sniff del formato) e dal worker (decodifica e derivati); usa Sharp già fissato a 0.35.5 e Zod esistente. Entry usa il codice sezione della configurazione congelata dell’iscrizione, non l’ID di una sezione di bozza. Photo è lo slot logico, PhotoRevision conserva il riferimento immutabile a originale, SHA-256, dimensione e regole. PhotoProcessing separa lo stato operativo dai dati immutabili. Un codice UUID casuale dell’opera prepara la futura mappatura anonima, che non viene esposta al client o a una giuria in questa fase.
+
+L’upload verifica ownership e finestra delle iscrizioni, limita lo stream prima di decodificarlo, serializza le modifiche dell’iscrizione e scrive lo storage con creazione esclusiva. Salvataggio revisione, stato pending, evento `photo.process` e audit sono transazionali. Un ID di upload rende i retry degli stessi byte idempotenti; Redis contiene esclusivamente l’ID outbox. Il worker accede alla sola revisione del job, verifica SHA-256, valida le regole e scrive un derivato WebP distinto. Retry con originale/derivato già presenti non li sovrascrivono.
+
+Se il processo termina dopo la scrittura e prima del commit possono restare file orfani non consultabili dalle API: vanno riconciliati in manutenzione confrontando le chiavi DB, senza cancellare originali referenziati. La cancellazione utente è logica; retention e cancellazione definitiva richiedono una futura procedura esplicita. Nessuna promessa di scansione antivirus: file non validati restano privati, gli originali vengono serviti solo in download al proprietario e le anteprime solo dopo decodifica riuscita.
+
+Il caricamento multiplo usa richieste individuali limitate a due trasferimenti concorrenti, con stato/progresso per file. Un portfolio assegna la selezione alle sole posizioni libere; una sezione single crea un’opera distinta per ogni file, con titolo scelto prima dell’upload oppure composto da nome comune e numero. Nome file e File restano nella coda browser, non nei dati persistiti. L’ID client della creazione opera rende idempotenti anche i retry con risposta persa prima di ricevere il parent ID; ownership e sezione sono verificate sul record esistente. Le revisioni mantengono il proprio ID di upload durante i retry. Non viene ritrasmesso ciò che la coda ha già confermato come salvato.
+
+## Trascinamento e titoli delle fotografie
+
+La selezione multipla viene preparata nel browser prima dell’upload: titoli individuali richiesti per tutte le nuove foto oppure un nome comune con numerazione. Le sezioni single restano opere distinte; i portfolio conservano un solo contenitore. La migrazione 13 aggiunge Photo.title nullable (max 200 caratteri) come metadato logico modificabile dal proprietario durante la finestra aperta: non modifica PhotoRevision o i byte originali. La sostituzione mantiene il titolo, salvo una nuova scelta esplicita. Il titolo non viene copiato nei derivati o nei job. Rimozione foto e opera aggiornano la vista e la coda browser; le righe originali/revisioni restano conservate. Drag/drop accetta file dal dispositivo, senza scaricare URL o percorrere cartelle ricorsivamente.
