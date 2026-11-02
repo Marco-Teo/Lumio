@@ -7,6 +7,8 @@ import { AccessError } from '../../../server/authorization';
 import { editionSchema } from '../../../lib/competitions';
 import { snapshotProfile } from '../../../lib/participants';
 import { RegistrationEditor } from './editor';
+import { EntriesEditor } from './entries-editor';
+import { listEntries } from '../../../server/entries';
 export default async function RegistrationPage({
   params,
 }: {
@@ -30,6 +32,7 @@ export default async function RegistrationPage({
   }
   const config = editionSchema.parse(registration.configurationSnapshot),
     snapshot = snapshotProfile(registration.profileSnapshot);
+  const entries = await listEntries(session.user, registration.id);
   return (
     <main className="platform">
       <nav className="actions">
@@ -60,13 +63,12 @@ export default async function RegistrationPage({
           .
         </p>
         <p>
-          Ora controlla e completa i dati qui sotto. Non devi attendere
+          Ora completa i dati e aggiungi le opere qui sotto. Non devi attendere
           un’approvazione o una risposta dell’admin.
         </p>
         <p>
-          Questa è una bozza, non un’iscrizione definitiva. Caricamento delle
-          opere, eventuale pagamento e conferma finale non sono ancora
-          disponibili.
+          Questa è una bozza, non un’iscrizione definitiva. Eventuale pagamento
+          e conferma finale non sono ancora disponibili.
         </p>
         {registration.receiptStatus && (
           <p>
@@ -87,6 +89,12 @@ export default async function RegistrationPage({
           editable: registration.editable,
           profile: snapshot.profile,
         }}
+      />
+      <EntriesEditor
+        registrationId={registration.id}
+        editable={registration.editable}
+        configuration={config}
+        initial={entries}
       />
       <section>
         <h2>Documenti dell’iscrizione</h2>

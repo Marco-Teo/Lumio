@@ -97,8 +97,8 @@ export default async function EditionPage({
         />
       )}
       <p>
-        In questa fase puoi preparare i dati dell’iscrizione. Invio delle opere,
-        pagamento e conferma definitiva non sono ancora disponibili.
+        Puoi preparare i dati dell’iscrizione, aggiungere le opere e caricare le
+        fotografie. Pagamento e conferma definitiva non sono ancora disponibili.
       </p>
     </main>
   );

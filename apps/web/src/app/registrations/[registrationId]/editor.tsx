@@ -26,9 +26,9 @@ export function RegistrationEditor({
     <>
       <p>Stato: {registrationStatusLabels[status]}</p>
       <p>
-        Questa è una bozza: le opere e la conferma definitiva arriveranno nelle
-        fasi successive. I dati qui salvati riguardano soltanto questa
-        iscrizione.
+        Questa è una bozza: puoi completare i dati e aggiungere le opere. La
+        conferma definitiva arriverà nei passaggi successivi. I dati qui salvati
+        riguardano soltanto questa iscrizione.
       </p>
       {!initial.editable && (
         <p>

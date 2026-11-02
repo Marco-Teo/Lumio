@@ -1,6 +1,15 @@
-import { test, expect, type BrowserContext } from '@playwright/test';
+import {
+  test,
+  expect,
+  type BrowserContext,
+  type Page,
+  type Locator,
+} from '@playwright/test';
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { mediaRoot } from '@lumio/media/storage';
 import { saveContestCover } from '../../apps/web/src/server/competitions/cover';
 import { createDatabase } from '@lumio/database';
 import { authentication } from '../../apps/web/src/server/auth';
@@ -77,6 +86,10 @@ test('participant starts an edition registration with independent profile data a
       awardsAt: at(3),
       regulations: 'Regolamento test F2',
       privacy: 'Informativa test F2',
+      imageRules: {
+        ...emptyEdition('Photo rules', 'photo-rules', '2026').imageRules,
+        formats: ['png'] as Array<'png'>,
+      },
       sections: [
         {
           name: 'Tema libero',
@@ -86,6 +99,17 @@ test('participant starts an edition registration with independent profile data a
           type: 'single' as const,
           minImages: 1,
           maxImages: 1,
+          feeCents: 0,
+          specificRules: '',
+        },
+        {
+          name: 'Portfolio',
+          code: 'P',
+          description: '',
+          theme: '',
+          type: 'portfolio' as const,
+          minImages: 2,
+          maxImages: 2,
           feeCents: 0,
           specificRules: '',
         },
@@ -170,7 +194,9 @@ test('participant starts an edition registration with independent profile data a
     await page.getByRole('link', { name: 'Apri bozza', exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${registrationPath}$`));
     await page.setViewportSize({ width: 1280, height: 720 });
-    await expect(page.getByText('Stato: Opere da aggiungere')).toBeVisible();
+    await expect(
+      page.getByText('Stato: Opere e fotografie da verificare'),
+    ).toBeVisible();
     await expect(page.getByLabel('Nome', { exact: true })).toHaveValue(
       'Profilo originale',
     );
@@ -224,6 +250,307 @@ test('participant starts an edition registration with independent profile data a
     expect(
       (await otherContext.request.get(`/api${registrationPath}`)).status(),
     ).toBe(404);
+    const works = page.getByRole('region', { name: 'Le tue opere' });
+    await works
+      .getByLabel('Titolo dell’opera', { exact: true })
+      .fill('Paesaggio E2E');
+    await works
+      .getByRole('button', { name: 'Crea opera', exact: true })
+      .click();
+    const single = works.getByRole('article', { name: 'Paesaggio E2E' });
+    await single
+      .getByLabel('Aggiungi fotografia 1 a Paesaggio E2E')
+      .setInputFiles('tests/fixtures/contest-cover.png');
+    await expect(
+      single.getByText('Fotografie conformi', { exact: true }),
+    ).toBeVisible({ timeout: 20000 });
+    await expect(single.getByRole('img')).toBeVisible();
+    await expect
+      .poll(() =>
+        single
+          .getByRole('img')
+          .evaluate((image: HTMLImageElement) => image.naturalWidth),
+      )
+      .toBeGreaterThan(0);
+    const registrationId = registrationPath.split('/').pop()!;
+    const first = await owner.photoRevision.findFirstOrThrow({
+      where: { registrationId },
+      orderBy: { createdAt: 'asc' },
+    });
+    const filePath = `/api${registrationPath}/photos/${first.id}`;
+    expect(
+      await (await page.request.get(`${filePath}?original=1`)).body(),
+    ).toEqual(readFileSync('tests/fixtures/contest-cover.png'));
+    expect((await request.get(filePath)).status()).toBe(401);
+    expect((await otherContext.request.get(filePath)).status()).toBe(404);
+    expect(
+      (await otherContext.request.get(`${filePath}?original=1`)).status(),
+    ).toBe(404);
+    expect(
+      (
+        await page.request.post(`/api${registrationPath}/entries`, {
+          headers: { Origin: 'https://untrusted.invalid' },
+          data: { title: 'Forged', sectionCode: 'L' },
+        })
+      ).status(),
+    ).toBe(403);
+    await single.getByLabel('Sostituisci fotografia 1').setInputFiles({
+      name: 'corrupt.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]),
+    });
+    await expect(single.getByText(/Il file non è leggibile/)).toBeVisible({
+      timeout: 20000,
+    });
+    await single
+      .getByLabel('Sostituisci fotografia 1')
+      .setInputFiles('tests/fixtures/contest-cover.png');
+    await expect(
+      single.getByText('Fotografie conformi', { exact: true }),
+    ).toBeVisible({ timeout: 20000 });
+    await expect(
+      single.getByText('Fotografia 1 · Revisione 3', { exact: true }),
+    ).toBeVisible();
+    expect(
+      await (await page.request.get(`${filePath}?original=1`)).body(),
+    ).toEqual(readFileSync('tests/fixtures/contest-cover.png'));
+    await works.getByLabel('Sezione', { exact: true }).selectOption('P');
+    await works
+      .getByLabel('Titolo dell’opera', { exact: true })
+      .fill('Portfolio E2E');
+    await works
+      .getByRole('button', { name: 'Crea opera', exact: true })
+      .click();
+    const portfolio = works.getByRole('article', { name: 'Portfolio E2E' });
+    const fixture = readFileSync('tests/fixtures/contest-cover.png');
+    await portfolio
+      .getByLabel('Aggiungi fotografie a Portfolio E2E')
+      .setInputFiles(
+        [1, 2, 3].map((index) => ({
+          name: `troppi-${index}.png`,
+          mimeType: 'image/png',
+          buffer: fixture,
+        })),
+      );
+    await expect(works.getByRole('alert')).toContainText(
+      'Seleziona al massimo 2 file',
+    );
+    await expect(portfolio.getByRole('img')).toHaveCount(0);
+    await expect(
+      portfolio.getByText('Da completare', { exact: true }),
+    ).toBeVisible();
+    await dropPhotos(page, portfolio.locator('.photo-dropzone'), fixture, [
+      'portfolio-1.png',
+      'portfolio-2.png',
+    ]);
+    const naming = works.getByRole('form', { name: 'Prepara le foto' });
+    await naming
+      .getByRole('radio', { name: 'Un titolo per ogni foto' })
+      .check();
+    await naming
+      .getByLabel('Titolo foto 1', { exact: true })
+      .fill('Alba sull’acqua');
+    const revisionCount = await owner.photoRevision.count({
+      where: { registrationId },
+    });
+    await naming.getByRole('button', { name: 'Carica le foto' }).click();
+    expect(
+      await naming
+        .getByLabel('Titolo foto 2', { exact: true })
+        .evaluate((input: HTMLInputElement) => input.validity.valid),
+    ).toBe(false);
+    expect(await owner.photoRevision.count({ where: { registrationId } })).toBe(
+      revisionCount,
+    );
+    await naming.getByLabel('Titolo foto 2', { exact: true }).fill('Tramonto');
+    await page.setViewportSize({ width: 320, height: 844 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    if (!process.env.CI)
+      await page.screenshot({
+        path: '.tools/design-preview/photo-naming-mobile.png',
+        fullPage: true,
+      });
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await naming.getByRole('button', { name: 'Carica le foto' }).click();
+    await expect(
+      portfolio.getByText('Fotografie conformi', { exact: true }),
+    ).toBeVisible({ timeout: 20000 });
+    await expect(portfolio.getByRole('img')).toHaveCount(2);
+    await expect(
+      portfolio.getByRole('heading', { name: 'Alba sull’acqua', exact: true }),
+    ).toBeVisible();
+    await expect(
+      portfolio.getByRole('heading', { name: 'Tramonto', exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      portfolio.getByRole('heading', { name: 'Alba sull’acqua', exact: true }),
+    ).toBeVisible();
+    await works.getByLabel('Sezione', { exact: true }).selectOption('L');
+    const previousEntries = await owner.entry.count({
+      where: { registrationId },
+    });
+    const previousRevisions = await owner.photoRevision.count({
+      where: { registrationId },
+    });
+    let intercepted = false;
+    await page.route(
+      '**/api/registrations/*/entries/*/photos/*',
+      async (route) => {
+        if (!intercepted && route.request().method() === 'PUT') {
+          intercepted = true;
+          const response = await route.fetch();
+          expect(response.status()).toBe(202);
+          await route.fulfill({
+            status: 503,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              message: 'Interruzione di rete simulata. Riprova.',
+            }),
+          });
+        } else await route.continue();
+      },
+    );
+    await dropPhotos(
+      page,
+      works.locator('.bulk-photo-picker .photo-dropzone'),
+      fixture,
+      ['singola-1.png', 'singola-2.png'],
+    );
+    await naming
+      .getByRole('radio', { name: 'Nome comune e foto numerate' })
+      .check();
+    await naming
+      .getByLabel('Nome del gruppo', { exact: true })
+      .fill('Paesaggi');
+    await naming.getByRole('button', { name: 'Carica le foto' }).click();
+    const queue = works.getByRole('region', {
+      name: 'Caricamenti selezionati',
+    });
+    await expect(
+      queue.getByText('Originale salvato', { exact: true }),
+    ).toHaveCount(1);
+    await expect(queue.getByText('Non riuscito', { exact: true })).toHaveCount(
+      1,
+    );
+    await expect(
+      queue.getByRole('button', { name: 'Riprova file non riusciti' }),
+    ).toBeEnabled();
+    expect(await owner.entry.count({ where: { registrationId } })).toBe(
+      previousEntries + 2,
+    );
+    expect(await owner.photoRevision.count({ where: { registrationId } })).toBe(
+      previousRevisions + 2,
+    );
+    await queue
+      .getByRole('button', { name: 'Riprova file non riusciti' })
+      .click();
+    await expect(
+      queue.getByText('Originale salvato', { exact: true }),
+    ).toHaveCount(2);
+    expect(await owner.entry.count({ where: { registrationId } })).toBe(
+      previousEntries + 2,
+    );
+    expect(await owner.photoRevision.count({ where: { registrationId } })).toBe(
+      previousRevisions + 2,
+    );
+    await page.unroute('**/api/registrations/*/entries/*/photos/*');
+    await expect(
+      works.getByText('Fotografie conformi', { exact: true }),
+    ).toHaveCount(4, { timeout: 20000 });
+    await expect(
+      works.getByRole('article', { name: 'Paesaggi — Foto 1', exact: true }),
+    ).toBeVisible();
+    await expect(
+      works.getByRole('article', { name: 'Paesaggi — Foto 2', exact: true }),
+    ).toBeVisible();
+    // A grouped portfolio needs only its group name, with ordinal photo labels.
+    await works.getByLabel('Sezione', { exact: true }).selectOption('P');
+    await works
+      .getByLabel('Titolo dell’opera', { exact: true })
+      .fill('Raccolta');
+    await works
+      .getByRole('button', { name: 'Crea opera', exact: true })
+      .click();
+    const collection = works.getByRole('article', {
+      name: 'Raccolta',
+      exact: true,
+    });
+    await dropPhotos(page, collection.locator('.photo-dropzone'), fixture, [
+      'gruppo-1.png',
+      'gruppo-2.png',
+    ]);
+    await expect(
+      naming.getByRole('radio', { name: 'Nome comune e foto numerate' }),
+    ).toBeChecked();
+    await naming.getByRole('button', { name: 'Carica le foto' }).click();
+    await expect(
+      collection.getByText('Fotografie conformi', { exact: true }),
+    ).toBeVisible({ timeout: 20000 });
+    await expect(
+      collection.getByRole('heading', { name: 'Foto 1', exact: true }),
+    ).toBeVisible();
+    await expect(
+      collection.getByRole('heading', { name: 'Foto 2', exact: true }),
+    ).toBeVisible();
+    page.once('dialog', (dialog) => dialog.accept());
+    await collection
+      .getByRole('button', { name: 'Rimuovi opera Raccolta', exact: true })
+      .click();
+    await expect(collection).toHaveCount(0);
+    // Removing a photo clears its card; the empty work can then be removed.
+    await works.getByLabel('Sezione', { exact: true }).selectOption('L');
+    await works
+      .getByLabel('Titolo dell’opera', { exact: true })
+      .fill('Da rimuovere');
+    await works
+      .getByRole('button', { name: 'Crea opera', exact: true })
+      .click();
+    const removable = works.getByRole('article', {
+      name: 'Da rimuovere',
+      exact: true,
+    });
+    await dropPhotos(page, removable.locator('.photo-dropzone'), fixture, [
+      'unica.png',
+    ]);
+    await expect(removable.getByRole('img')).toBeVisible({ timeout: 20000 });
+    const beforeRemoval = await owner.photoRevision.count({
+      where: { registrationId },
+    });
+    page.once('dialog', (dialog) => dialog.accept());
+    await removable
+      .getByRole('button', { name: 'Rimuovi fotografia 1', exact: true })
+      .click();
+    await expect(removable.locator('.photo-card')).toHaveCount(0);
+    page.once('dialog', (dialog) => dialog.accept());
+    await removable
+      .getByRole('button', { name: 'Rimuovi opera Da rimuovere', exact: true })
+      .click();
+    await expect(removable).toHaveCount(0);
+    expect(await owner.photoRevision.count({ where: { registrationId } })).toBe(
+      beforeRemoval,
+    );
+    await page.setViewportSize({ width: 320, height: 844 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    if (!process.env.CI)
+      await page.screenshot({
+        path: '.tools/design-preview/photos-mobile.png',
+        fullPage: true,
+      });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    if (!process.env.CI)
+      await page.screenshot({
+        path: '.tools/design-preview/photos-desktop.png',
+        fullPage: true,
+      });
     await transitionEdition(actor, organizationId, contest.id, edition.id, {
       version: 1,
       status: 'archived',
@@ -233,6 +560,17 @@ test('participant starts an edition registration with independent profile data a
     await expect(
       page.getByRole('button', { name: 'Salva dati iscrizione' }),
     ).toHaveCount(0);
+    await expect(
+      works.getByRole('button', { name: 'Crea opera', exact: true }),
+    ).toHaveCount(0);
+    expect(
+      (
+        await page.request.post(`/api${registrationPath}/entries`, {
+          headers: { Origin: 'http://127.0.0.1:3100' },
+          data: { title: 'Closed', sectionCode: 'L' },
+        })
+      ).status(),
+    ).toBe(409);
     await saveContestCover(actor, organizationId, contest.id, null);
     await page.goto('/registrations');
     await expect(
@@ -244,6 +582,10 @@ test('participant starts an edition registration with independent profile data a
     if (organizationId) {
       const where = { organizationId };
       await owner.outboxEvent.deleteMany({ where });
+      await owner.photoProcessing.deleteMany({ where });
+      await owner.photoRevision.deleteMany({ where });
+      await owner.photo.deleteMany({ where });
+      await owner.entry.deleteMany({ where });
       await owner.registrationEvent.deleteMany({ where });
       await owner.registration.deleteMany({ where });
       await owner.auditEvent.deleteMany({ where });
@@ -257,8 +599,35 @@ test('participant starts an edition registration with independent profile data a
     await owner.person.deleteMany({ where: { userId: { in: users } } });
     await owner.user.deleteMany({ where: { id: { in: users } } });
     await owner.$disconnect();
+    if (organizationId)
+      await rm(resolve(mediaRoot(), organizationId), {
+        recursive: true,
+        force: true,
+      });
   }
 });
+async function dropPhotos(
+  page: Page,
+  target: Locator,
+  bytes: Buffer,
+  names: string[],
+) {
+  const transfer = await page.evaluateHandle(
+    ({ bytes, names }) => {
+      const data = new DataTransfer();
+      for (const name of names)
+        data.items.add(
+          new File([new Uint8Array(bytes)], name, { type: 'image/png' }),
+        );
+      return data;
+    },
+    { bytes: Array.from(bytes), names },
+  );
+  await target.dispatchEvent('dragenter', { dataTransfer: transfer });
+  await expect(target).toHaveAttribute('data-dragging', 'true');
+  await target.dispatchEvent('drop', { dataTransfer: transfer });
+  await transfer.dispose();
+}
 async function signIn(
   context: BrowserContext,
   email: string,

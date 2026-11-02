@@ -63,5 +63,5 @@ export function registrationOpen(
 }
 export const registrationStatusLabels: Record<string, string> = {
   profile_incomplete: 'Dati personali da completare',
-  entries_incomplete: 'Opere da aggiungere',
+  entries_incomplete: 'Opere e fotografie da verificare',
 };
