@@ -136,6 +136,9 @@ test('participant starts an edition registration with independent profile data a
     await expect(page.getByRole('status')).toContainText('Profilo salvato');
     await page.goto(`/editions/${edition.id}`);
     await expect(
+      page.getByText(/Dimensione massima: 4\.76837158203125 MiB/),
+    ).toBeVisible();
+    await expect(
       page.getByRole('heading', { name: config.name }),
     ).toBeVisible();
     await page
@@ -251,6 +254,11 @@ test('participant starts an edition registration with independent profile data a
       (await otherContext.request.get(`/api${registrationPath}`)).status(),
     ).toBe(404);
     const works = page.getByRole('region', { name: 'Le tue opere' });
+    await works.getByText('Regole delle fotografie', { exact: true }).click();
+    await expect(
+      works.getByText(/Dimensione massima: 4\.76837158203125 MiB per file/),
+    ).toBeVisible();
+
     await works
       .getByLabel('Titolo dell’opera', { exact: true })
       .fill('Paesaggio E2E');

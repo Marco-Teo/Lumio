@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   contestSchema,
   editionSchema,
+  editionWriteSchema,
   emptyEdition,
   publicationIssues,
   type EditionConfiguration,
@@ -41,10 +42,12 @@ type ContestRow = {
 };
 type ContestInput = { name: string; slug: string; description: string };
 function PublicationChecklist({ configuration }: { configuration: unknown }) {
-  const parsed = editionSchema.safeParse(configuration);
+  const parsed = editionWriteSchema.safeParse(configuration);
   const issues = parsed.success
     ? publicationIssues(parsed.data)
-    : ['Salva una configurazione valida.'];
+    : competitionFormIssues(parsed.error).map(
+        (issue) => `${issue.label}: ${issue.message}`,
+      );
   if (!issues.length) return null;
   return (
     <aside className="publication-feedback">

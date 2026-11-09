@@ -31,3 +31,19 @@ it('limits concurrent uploads per actor and releases the slot after failure', as
     limitedUpload('synthetic-actor', async () => true),
   ).resolves.toBe(true);
 });
+
+it('accepts the exact body limit and rejects an oversized declared length', async () => {
+  const exact = new Request('http://example.invalid', {
+    method: 'PUT',
+    body: Buffer.alloc(10),
+  });
+  expect((await photoUploadBody(exact, 10)).length).toBe(10);
+  const oversized = new Request('http://example.invalid', {
+    method: 'PUT',
+    headers: { 'Content-Length': '11' },
+    body: Buffer.alloc(1),
+  });
+  await expect(photoUploadBody(oversized, 10)).rejects.toMatchObject({
+    status: 413,
+  });
+});

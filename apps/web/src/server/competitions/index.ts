@@ -7,6 +7,7 @@ import { withOrganization } from '../tenancy';
 import {
   contestSchema,
   editionSchema,
+  editionWriteSchema,
   publicationIssues,
   type EditionConfiguration,
 } from '../../lib/competitions';
@@ -183,7 +184,7 @@ export async function saveEdition(
   const parsed = z
     .object({
       version: z.number().int().positive().optional(),
-      configuration: editionSchema,
+      configuration: editionWriteSchema,
     })
     .strict()
     .parse(input);
@@ -316,7 +317,7 @@ export async function transitionEdition(
         },
       });
       const issues = publicationIssues(
-        editionSchema.parse(revision.configuration),
+        editionWriteSchema.parse(revision.configuration),
       );
       if (issues.length) throw new CompetitionError(400, issues.join(' '));
     }

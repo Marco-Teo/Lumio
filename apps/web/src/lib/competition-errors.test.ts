@@ -71,5 +71,5 @@ it('explains formats and file size with display units', () => {
   ).toContain('almeno un formato');
   expect(
     issues.find((issue) => issue.path === 'imageRules.maxBytes')?.message,
-  ).toContain('1000 MB');
+  ).toContain('25 MiB');
 });

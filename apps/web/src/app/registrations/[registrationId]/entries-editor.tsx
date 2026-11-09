@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
+import { effectivePhotoBytes, photoSizeLabel } from '@lumio/media/limits';
 import type { EditionConfiguration } from '../../../lib/competitions';
 import type { listEntries } from '../../../server/entries';
 import { batchPositions } from '../../../lib/photo-batch';
@@ -126,11 +127,9 @@ export function EntriesEditor({
     const uploadId =
       suppliedId ?? uploadIds.current.get(identity) ?? crypto.randomUUID();
     uploadIds.current.set(identity, uploadId);
-    const limit = Math.min(configuration.imageRules.maxBytes, 25 * 1024 * 1024);
+    const limit = effectivePhotoBytes(configuration.imageRules.maxBytes);
     if (file.size > limit) {
-      throw new Error(
-        `Il file supera il limite di ${(limit / 1024 / 1024).toFixed(1)} MB.`,
-      );
+      throw new Error(`Il file supera il limite di ${photoSizeLabel(limit)}.`);
     }
     await new Promise<void>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -399,12 +398,10 @@ export function EntriesEditor({
         <p>
           Formati: {configuration.imageRules.formats.join(', ')}. Dimensione
           massima:{' '}
-          {(
-            Math.min(configuration.imageRules.maxBytes, 25 * 1024 * 1024) /
-            1024 /
-            1024
-          ).toFixed(1)}{' '}
-          MB per file; massimo 40 megapixel e una sola pagina/fotogramma.
+          {photoSizeLabel(
+            effectivePhotoBytes(configuration.imageRules.maxBytes),
+          )}{' '}
+          per file; massimo 40 megapixel e una sola pagina/fotogramma.
         </p>
         <p>
           Dimensioni minime:{' '}

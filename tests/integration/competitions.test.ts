@@ -101,6 +101,82 @@ test('competition lifecycle, tenant isolation and immutable revisions', async (t
     },
   );
   await t.test(
+    'legacy photo rules remain readable but cannot be saved or published',
+    async () => {
+      const contest = await saveContest(actor, orgA, {
+        name: 'Legacy contest',
+        slug: 'legacy',
+        description: '',
+      });
+      const legacy = {
+        ...draft,
+        imageRules: { ...draft.imageRules, maxBytes: 100_000_000 },
+      };
+      const edition = await owner.edition.create({
+        data: {
+          organizationId: orgA,
+          contestId: contest.id,
+          name: draft.name,
+          slug: 'legacy',
+          identifier: 'legacy',
+        },
+      });
+      await owner.editionRevision.create({
+        data: {
+          organizationId: orgA,
+          editionId: edition.id,
+          version: edition.version,
+          configuration: legacy,
+          actorUserId: actor.id,
+        },
+      });
+      const rows = await listCompetitions(actor, orgA);
+      assert.ok(rows.contests.some((row) => row.id === contest.id));
+      await assert.rejects(
+        saveEdition(actor, orgA, contest.id, { configuration: legacy }),
+        /25 MiB/,
+      );
+      await assert.rejects(
+        saveEdition(
+          actor,
+          orgA,
+          contest.id,
+          { version: edition.version, configuration: legacy },
+          edition.id,
+        ),
+        /25 MiB/,
+      );
+      await assert.rejects(
+        transitionEdition(actor, orgA, contest.id, edition.id, {
+          version: edition.version,
+          status: 'published',
+        }),
+        /25 MiB/,
+      );
+      assert.deepEqual(
+        (
+          await owner.editionRevision.findFirstOrThrow({
+            where: { editionId: edition.id },
+          })
+        ).configuration,
+        legacy,
+      );
+      assert.equal(
+        (await owner.edition.findUniqueOrThrow({ where: { id: edition.id } }))
+          .status,
+        'draft',
+      );
+      await owner.auditEvent.deleteMany({
+        where: { organizationId: orgA, entityId: contest.id },
+      });
+      await owner.editionRevision.deleteMany({
+        where: { editionId: edition.id },
+      });
+      await owner.edition.delete({ where: { id: edition.id } });
+      await owner.contest.delete({ where: { id: contest.id } });
+    },
+  );
+  await t.test(
     'creates multiple editions and scopes slugs to their parent',
     async () => {
       const contest = await saveContest(actor, orgA, {

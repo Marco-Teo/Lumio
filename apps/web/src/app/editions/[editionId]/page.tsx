@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { effectivePhotoBytes, photoSizeLabel } from '@lumio/media/limits';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { authentication } from '../../../server/auth';
@@ -66,7 +67,8 @@ export default async function EditionPage({
         </ul>
         <p>
           Formati: {config.imageRules.formats.join(', ').toUpperCase()}.
-          Dimensione massima: {config.imageRules.maxBytes / 1000000} MB.
+          Dimensione massima:{' '}
+          {photoSizeLabel(effectivePhotoBytes(config.imageRules.maxBytes))}.
         </p>
       </section>
       <section>

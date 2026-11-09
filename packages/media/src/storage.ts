@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve, isAbsolute, basename, dirname } from 'node:path';
 
-export const maxPhotoBytes = 25 * 1024 * 1024;
+export { maxPhotoBytes } from './limits';
 export function mediaRoot() {
   const test = process.env.LUMIO_TEST_MODE === '1';
   const cwd = process.cwd();

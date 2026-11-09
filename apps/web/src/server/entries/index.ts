@@ -1,12 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { maxPhotoBytes, photoSizeLabel } from '@lumio/media/limits';
 import { z } from 'zod';
 import type { Prisma } from '@lumio/database';
-import {
-  maxPhotoBytes,
-  mediaKey,
-  readMedia,
-  writeImmutable,
-} from '@lumio/media/storage';
+import { mediaKey, readMedia, writeImmutable } from '@lumio/media/storage';
 import { originalFormat } from '@lumio/media/processing';
 import { database } from '../database';
 import { ownRegistration, type ParticipantActor } from '../participants';
@@ -220,7 +216,7 @@ export async function uploadPhoto(
   if (!bytes.length || bytes.length > maxPhotoBytes)
     throw new CompetitionError(
       400,
-      'Carica un’immagine non vuota di massimo 25 MB.',
+      `Carica un’immagine non vuota di massimo ${photoSizeLabel(maxPhotoBytes)}.`,
     );
   const sha256 = createHash('sha256').update(bytes).digest('hex');
   return scope(actor, registrationId, true, async (tx, registration) => {

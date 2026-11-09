@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     "./storage": "./src/storage.ts",
-    "./processing": "./src/processing.ts"
+    "./processing": "./src/processing.ts",
+    "./limits": "./src/limits.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

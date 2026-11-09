@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import { maxPhotoBytes, photoSizeLabel } from '@lumio/media/limits';
 export type CompetitionFormIssue = {
   path: string;
   label: string;
@@ -20,7 +21,7 @@ const labels: Record<string, string> = {
   votingMethod: 'Metodo di voto',
   sections: 'Sezioni',
   'imageRules.formats': 'Formati immagini',
-  'imageRules.maxBytes': 'Dimensione massima file (MB)',
+  'imageRules.maxBytes': 'Dimensione massima file (MiB)',
   'imageRules.minWidth': 'Larghezza minima (px)',
   'imageRules.minHeight': 'Altezza minima (px)',
   'imageRules.maxLongEdge': 'Lato lungo massimo (px)',
@@ -64,7 +65,9 @@ export function competitionFormIssues(
         message = 'Seleziona almeno un formato: JPEG, PNG o TIFF.';
       else if (path === 'imageRules.maxBytes')
         message =
-          'Inserisci una dimensione maggiore di 0 e non superiore a 1000 MB.';
+          'Inserisci una dimensione in MiB maggiore di 0 e non superiore a ' +
+          photoSizeLabel(maxPhotoBytes) +
+          '. Usa un valore che corrisponda a un numero intero di byte: i decimali non vengono arrotondati.';
       else if (issue.code === 'too_small')
         message =
           issue.origin === 'string'

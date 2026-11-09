@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+  maxPhotoBytes,
+  maxPhotoPixels,
+  photoSizeLabel,
+} from '@lumio/media/limits';
 
 export const slugSchema = z
   .string()
@@ -160,6 +165,24 @@ export const editionSchema = z
         ['imageRules', 'maxShortEdge'],
       );
   });
+
+// Preserve historical reads; current constraints apply only to draft writes/publication.
+export const editionWriteSchema = editionSchema.superRefine((edition, ctx) => {
+  const rules = edition.imageRules;
+  if (rules.maxBytes > maxPhotoBytes)
+    ctx.addIssue({
+      code: 'custom',
+      path: ['imageRules', 'maxBytes'],
+      message: 'Imposta al massimo ' + photoSizeLabel(maxPhotoBytes) + '.',
+    });
+  if ((rules.minWidth ?? 1) * (rules.minHeight ?? 1) > maxPhotoPixels)
+    ctx.addIssue({
+      code: 'custom',
+      path: ['imageRules', 'minHeight'],
+      message:
+        'Le dimensioni minime richiedono più di 40 megapixel. Riduci la larghezza o l’altezza minima.',
+    });
+});
 
 export type EditionConfiguration = z.infer<typeof editionSchema>;
 export type SectionConfiguration = z.infer<typeof sectionSchema>;

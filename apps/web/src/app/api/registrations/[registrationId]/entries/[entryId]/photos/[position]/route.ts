@@ -6,7 +6,7 @@ import {
 } from '../../../../../../../../server/entries';
 import { registrationDetail } from '../../../../../../../../server/participants';
 import { editionSchema } from '../../../../../../../../lib/competitions';
-import { maxPhotoBytes } from '@lumio/media/storage';
+import { maxPhotoBytes } from '@lumio/media/limits';
 import { limitedUpload } from '../../../../../../../../server/entries/upload-limit';
 import { CompetitionError } from '../../../../../../../../server/competitions';
 import {

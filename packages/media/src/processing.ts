@@ -1,4 +1,5 @@
 import sharp from 'sharp';
+import { maxPhotoPixels } from './limits';
 import { z } from 'zod';
 export const imageRulesSchema = z
   .object({
@@ -39,7 +40,7 @@ export async function processPhoto(bytes: Uint8Array, rules: ImageRules) {
     throw new InvalidPhoto('FILE_TOO_LARGE');
   try {
     const image = sharp(bytes, {
-      limitInputPixels: 40000000,
+      limitInputPixels: maxPhotoPixels,
       failOn: 'warning',
     }).timeout({ seconds: 8 });
     const metadata = await image.metadata();

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { editionSchema, emptyEdition, publicationIssues } from './competitions';
+import { maxPhotoBytes } from '@lumio/media/limits';
+import {
+  editionWriteSchema,
+  editionSchema,
+  emptyEdition,
+  publicationIssues,
+} from './competitions';
 
 const section = {
   name: 'Libero',
@@ -85,5 +91,51 @@ describe('edition configuration', () => {
         status: 'published',
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('current photo configuration writes versus historical reads', () => {
+  const draft = emptyEdition('Edizione', 'edizione', '2027');
+  const config = (rules: Partial<typeof draft.imageRules>) => ({
+    ...draft,
+    imageRules: { ...draft.imageRules, ...rules },
+  });
+  it.each([1, 5_000_000, maxPhotoBytes])('accepts %i bytes', (maxBytes) => {
+    expect(editionWriteSchema.safeParse(config({ maxBytes })).success).toBe(
+      true,
+    );
+  });
+  it.each([maxPhotoBytes + 1, 1_000_000_000])(
+    'reads legacy %i bytes but blocks new writes',
+    (maxBytes) => {
+      expect(editionSchema.safeParse(config({ maxBytes })).success).toBe(true);
+      expect(editionWriteSchema.safeParse(config({ maxBytes })).success).toBe(
+        false,
+      );
+    },
+  );
+  it('accepts exactly 40 megapixels including compatible edge limits', () => {
+    expect(
+      editionWriteSchema.safeParse(
+        config({
+          minWidth: 8000,
+          minHeight: 5000,
+          maxLongEdge: 8000,
+          maxShortEdge: 5000,
+        }),
+      ).success,
+    ).toBe(true);
+  });
+  it('reads legacy dimensions above 40 megapixels but rejects writing them', () => {
+    const legacy = config({ minWidth: 8000, minHeight: 5001 });
+    expect(editionSchema.safeParse(legacy).success).toBe(true);
+    expect(editionWriteSchema.safeParse(legacy).success).toBe(false);
+  });
+  it.each([
+    { minWidth: 8000, minHeight: 5000, maxLongEdge: 7999 },
+    { minWidth: 8000, minHeight: 5000, maxShortEdge: 4999 },
+    { maxShortEdge: 6000, maxLongEdge: 5000 },
+  ])('rejects incompatible configured edges: %j', (rules) => {
+    expect(editionWriteSchema.safeParse(config(rules)).success).toBe(false);
   });
 });

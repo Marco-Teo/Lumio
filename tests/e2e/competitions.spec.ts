@@ -185,11 +185,63 @@ test('organizer configures, versions, publishes and archives an edition', async 
       expect(title).not.toBeNull();
       if (box && title) expect(title.y).toBeGreaterThan(box.y + 2);
     }
+    await expect(
+      page.getByLabel('Dimensione massima file (MiB)', { exact: true }),
+    ).toHaveValue('4.76837158203125');
+    await expect(
+      page.getByText('Massimo 25 MiB.', { exact: false }),
+    ).toBeVisible();
     await page.getByLabel('Nome edizione').fill('Edizione 2027');
     await page.getByLabel('Slug edizione').fill('edizione-2027');
     await page.getByLabel('Anno o identificatore').fill('2027');
     await page.getByRole('button', { name: 'Salva bozza' }).click();
     await expect(page.getByRole('status')).toContainText('Bozza salvata');
+    for (const [input, bytes] of [
+      ['25', 26_214_400],
+      ['12,5', 13_107_200],
+      ['4.76837158203125', 5_000_000],
+      ['25', 26_214_400],
+    ] as const) {
+      await page.getByRole('button', { name: 'Configura edizione' }).click();
+      const limit = page.getByLabel('Dimensione massima file (MiB)', {
+        exact: true,
+      });
+      await limit.fill('25.00000095367431640625');
+      await page.getByRole('button', { name: 'Salva bozza' }).click();
+      await expect(
+        page.getByRole('alert', { name: 'Errori di compilazione' }),
+      ).toContainText('25 MiB');
+      await limit.fill('0.1');
+      await page.getByRole('button', { name: 'Salva bozza' }).click();
+      await expect(
+        page.getByRole('alert', { name: 'Errori di compilazione' }),
+      ).toContainText('numero intero di byte');
+      await limit.fill(input);
+      const [response] = await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.request().method() === 'PUT' &&
+            response.url().includes('/editions/'),
+        ),
+        page.getByRole('button', { name: 'Salva bozza' }).click(),
+      ]);
+      expect(response.ok()).toBe(true);
+      const saved = await owner.edition.findFirstOrThrow({
+        where: { organizationId, name: 'Edizione 2027' },
+      });
+      const revision = await owner.editionRevision.findFirstOrThrow({
+        where: { editionId: saved.id, version: saved.version },
+      });
+      expect(revision.configuration).toMatchObject({
+        imageRules: { maxBytes: bytes },
+      });
+      await page.reload();
+      await page.getByRole('button', { name: 'Configura edizione' }).click();
+      await expect(
+        page.getByLabel('Dimensione massima file (MiB)', { exact: true }),
+      ).toHaveValue(input.replace(',', '.'));
+      await page.getByRole('button', { name: 'Chiudi configurazione' }).click();
+    }
     await expect(
       page.getByText('Per pubblicare questa edizione:'),
     ).toBeVisible();
@@ -295,6 +347,9 @@ test('organizer configures, versions, publishes and archives an edition', async 
       .click();
     await expect(
       publicPage.getByRole('heading', { name: 'Edizione 2027', exact: true }),
+    ).toBeVisible();
+    await expect(
+      publicPage.getByText(/Dimensione massima: 25 MiB/),
     ).toBeVisible();
     await publicPage.close();
     await expect(

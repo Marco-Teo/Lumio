@@ -2,6 +2,12 @@
 
 import { useId, useState } from 'react';
 import {
+  maxPhotoBytes,
+  photoSizeLabel,
+  photoMiBValue,
+  photoBytesFromMiB,
+} from '@lumio/media/limits';
+import {
   FormField as Field,
   FormFeedback,
   FormErrorSummary,
@@ -11,7 +17,7 @@ import {
   type CompetitionFormIssue,
 } from '../../../lib/competition-errors';
 import {
-  editionSchema,
+  editionWriteSchema,
   publicationIssues,
   type EditionConfiguration,
   type SectionConfiguration,
@@ -36,6 +42,9 @@ export function EditionForm({
   onCancel: () => void;
 }) {
   const [config, setConfig] = useState(initial);
+  const [photoLimitInput, setPhotoLimitInput] = useState(() =>
+    photoMiBValue(initial.imageRules.maxBytes),
+  );
   const anchor = useId();
   const [activeSection, setActiveSection] = useState('general');
   const [errors, setErrors] = useState<CompetitionFormIssue[]>([]);
@@ -47,7 +56,7 @@ export function EditionForm({
     const next = { ...config, [key]: value };
     setConfig(next);
     if (validated) {
-      const parsed = editionSchema.safeParse(next);
+      const parsed = editionWriteSchema.safeParse(next);
       setErrors(parsed.success ? [] : competitionFormIssues(parsed.error));
     }
   }
@@ -69,7 +78,7 @@ export function EditionForm({
           event.preventDefault();
           setValidated(true);
           setErrors([]);
-          const parsed = editionSchema.safeParse(config);
+          const parsed = editionWriteSchema.safeParse(config);
           if (!parsed.success) {
             setErrors(competitionFormIssues(parsed.error));
             return;
@@ -244,24 +253,28 @@ export function EditionForm({
             </div>
           </Field>
           <Field
-            label="Dimensione massima file (MB)"
+            label="Dimensione massima file (MiB)"
             path="imageRules.maxBytes"
           >
             <input
-              type="number"
-              min="0.000001"
-              max={1000}
-              step="0.000001"
+              type="text"
+              inputMode="decimal"
               required
-              value={config.imageRules.maxBytes / 1000000}
-              onChange={(e) =>
+              value={photoLimitInput}
+              onChange={(e) => {
+                setPhotoLimitInput(e.target.value);
                 set('imageRules', {
                   ...config.imageRules,
-                  maxBytes: Math.round(e.target.valueAsNumber * 1000000),
-                })
-              }
+                  maxBytes: photoBytesFromMiB(e.target.value) ?? NaN,
+                });
+              }}
             />
           </Field>
+          <small>
+            Massimo {photoSizeLabel(maxPhotoBytes)}. I valori personalizzati
+            devono corrispondere a un numero intero di byte e non vengono
+            arrotondati.
+          </small>
           {(
             [
               ['minWidth', 'Larghezza minima (px)'],
