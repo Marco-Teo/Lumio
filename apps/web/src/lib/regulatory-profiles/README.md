@@ -31,4 +31,7 @@ significato degli ID già pubblicati: anche una revisione del catalogo 2027 rich
 un nuovo ID/versione implementativa, mantenendo consultabile quella precedente.
 Non introdurre fallback da 2027 a 2028 e non aggiornare snapshot o edizioni esistenti.
 
-Questo incremento non è importato da UI, API, schemi di edizione, worker o database.
+Il catalogo è ora usato dal modulo organizzatore e dagli schemi dell’edizione per
+la selezione, la persistenza dell’ID e la validazione della sua presenza nel catalogo.
+Le regole FIAF non sono ancora applicate automaticamente: il profilo non certifica
+la conformità del concorso e non concede Patrocinio o Raccomandazione.

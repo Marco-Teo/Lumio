@@ -19,6 +19,7 @@ import {
   organizationMemberships,
 } from '../../apps/web/src/server/competitions';
 import { emptyEdition } from '../../apps/web/src/lib/competitions';
+import { regulatoryCatalog } from '../../apps/web/src/lib/regulatory-profiles';
 
 if (!process.env.MIGRATION_DATABASE_URL || !process.env.WORKER_DATABASE_URL)
   throw new Error('Competition database environment required');
@@ -454,6 +455,115 @@ test('competition lifecycle, tenant isolation and immutable revisions', async (t
         (saved.status === 'draft' && saved.version === 2) ||
           (saved.status === 'published' && saved.version === 1),
       );
+    },
+  );
+  await t.test(
+    'profile associations use existing revisions, permissions and publication guards',
+    async () => {
+      for (const profile of regulatoryCatalog.profiles) {
+        const configuration = {
+          ...complete,
+          slug: `profile-${profile.target}`,
+          regulatoryProfile: { id: profile.id },
+        };
+        const edition = await saveEdition(actor, orgA, contestId, {
+          configuration,
+        });
+        const read = async () =>
+          (
+            await owner.editionRevision.findMany({
+              where: { editionId: edition.id },
+              orderBy: { version: 'asc' },
+            })
+          ).map((row) => row.configuration);
+        assert.deepEqual(await read(), [configuration]);
+        await assert.rejects(
+          saveEdition(
+            actor,
+            orgB,
+            contestId,
+            { version: 1, configuration },
+            edition.id,
+          ),
+        );
+        await assert.rejects(
+          saveEdition(
+            { ...actor, twoFactorEnabled: false },
+            orgA,
+            contestId,
+            { version: 1, configuration },
+            edition.id,
+          ),
+        );
+        await assert.rejects(
+          saveEdition(
+            actor,
+            orgA,
+            contestId,
+            { version: 9, configuration },
+            edition.id,
+          ),
+          /cambiata/,
+        );
+        await assert.rejects(
+          saveEdition(
+            actor,
+            orgA,
+            contestId,
+            {
+              version: 1,
+              configuration: {
+                ...configuration,
+                regulatoryProfile: { id: 'invented' },
+              },
+            },
+            edition.id,
+          ),
+          /profilo normativo/,
+        );
+        const { regulatoryProfile, ...independent } = configuration;
+        assert.equal(regulatoryProfile.id, profile.id);
+        await saveEdition(
+          actor,
+          orgA,
+          contestId,
+          { version: 1, configuration: independent },
+          edition.id,
+        );
+        await saveEdition(
+          actor,
+          orgA,
+          contestId,
+          { version: 2, configuration },
+          edition.id,
+        );
+        const before = await read();
+        assert.deepEqual(before, [configuration, independent, configuration]);
+        // The existing portfolio of 3 images stays valid: no FIAF presets/validation.
+        await transitionEdition(actor, orgA, contestId, edition.id, {
+          version: 3,
+          status: 'published',
+        });
+        await assert.rejects(
+          saveEdition(
+            actor,
+            orgA,
+            contestId,
+            { version: 3, configuration: independent },
+            edition.id,
+          ),
+          /modificabile/,
+        );
+        assert.deepEqual(await read(), before);
+        const listed = await listCompetitions(actor, orgA);
+        assert.deepEqual(
+          listed.contests
+            .find((contest) => contest.id === contestId)
+            ?.editions.find((row) => row.id === edition.id)?.revisions[0]
+            .configuration,
+          configuration,
+        );
+      }
     },
   );
   await t.test(

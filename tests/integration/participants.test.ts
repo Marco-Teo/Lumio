@@ -17,6 +17,7 @@ import {
   transitionEdition,
 } from '../../apps/web/src/server/competitions';
 import { emptyEdition } from '../../apps/web/src/lib/competitions';
+import { regulatoryCatalog } from '../../apps/web/src/lib/regulatory-profiles';
 import { emptyProfile } from '../../apps/web/src/lib/participants';
 import {
   participantProfile,
@@ -91,6 +92,7 @@ test('participant profile and registration ownership across tenants', async (t) 
     new Date(Date.now() + days * 86400000).toISOString();
   const config = {
     ...emptyEdition('Edizione aperta', 'edizione-aperta', '2026'),
+    regulatoryProfile: { id: regulatoryCatalog.profiles[0].id },
     description: 'Edizione per iscrizioni sintetiche',
     opensAt: at(-1),
     closesAt: at(1),
@@ -229,6 +231,7 @@ test('participant profile and registration ownership across tenants', async (t) 
         regulations: string;
       };
       assert.equal(snapshot.regulations, 'Regolamento originale');
+      assert.deepEqual(registrations[0].configurationSnapshot, config);
       assert.ok(registrations[0].privacyAcknowledgedAt);
       assert.ok(registrations[0].regulationsAcceptedAt);
     },

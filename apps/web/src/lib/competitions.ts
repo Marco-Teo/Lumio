@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { getRegulatoryProfile } from './regulatory-profiles';
 import {
   maxPhotoBytes,
   maxPhotoPixels,
@@ -62,6 +63,12 @@ export const editionSchema = z
     name: z.string().trim().min(2).max(120),
     slug: slugSchema,
     identifier: z.string().trim().min(1).max(40),
+    // Exact immutable catalog ID pins normative revision and Lumio implementation.
+    // No default: historical independent configurations keep their original shape.
+    regulatoryProfile: z
+      .object({ id: z.string().min(1).max(200) })
+      .strict()
+      .optional(),
     description: z.string().trim().max(5000),
     opensAt: optionalDate,
     closesAt: optionalDate,
@@ -168,6 +175,16 @@ export const editionSchema = z
 
 // Preserve historical reads; current constraints apply only to draft writes/publication.
 export const editionWriteSchema = editionSchema.superRefine((edition, ctx) => {
+  if (
+    edition.regulatoryProfile &&
+    !getRegulatoryProfile(edition.regulatoryProfile.id)
+  )
+    ctx.addIssue({
+      code: 'custom',
+      path: ['regulatoryProfile'],
+      message:
+        'Il profilo normativo selezionato non è disponibile. Scegli uno dei profili del catalogo.',
+    });
   const rules = edition.imageRules;
   if (rules.maxBytes > maxPhotoBytes)
     ctx.addIssue({

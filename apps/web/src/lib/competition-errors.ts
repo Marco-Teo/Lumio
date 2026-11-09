@@ -10,6 +10,7 @@ const labels: Record<string, string> = {
   slug: 'Slug',
   description: 'Descrizione',
   identifier: 'Anno o identificatore',
+  regulatoryProfile: 'Tipo di configurazione',
   opensAt: 'Apertura iscrizioni',
   closesAt: 'Chiusura iscrizioni',
   juryAt: 'Data giuria',

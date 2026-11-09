@@ -117,7 +117,7 @@ export function CompetitionConsole({
     success: string,
     editionId?: string,
   ) {
-    if (busy) return;
+    if (busy) return 'Attendi la fine dell’operazione in corso.';
     setBusy(true);
     setMessage('');
     setEditionNotice(null);
@@ -132,11 +132,13 @@ export function CompetitionConsole({
           `${success} Aggiornamento elenco non riuscito: ricarica la pagina.`,
         );
       }
+      return null;
     } catch (error) {
       const text =
         error instanceof Error ? error.message : 'Operazione non riuscita';
       setMessage(text);
       if (editionId) setEditionNotice({ id: editionId, text });
+      return text;
     } finally {
       setBusy(false);
     }
@@ -335,6 +337,13 @@ export function CompetitionConsole({
                     configuration={edition.revisions[0]?.configuration}
                   />
                 )}
+                {editionSchema.parse(edition.revisions[0].configuration)
+                  .regulatoryProfile && (
+                  <p>
+                    Configurazione FIAF selezionata — verifiche normative non
+                    ancora disponibili
+                  </p>
+                )}
                 {editionNotice?.id === edition.id && (
                   <p className="publication-feedback">{editionNotice.text}</p>
                 )}
@@ -426,6 +435,7 @@ export function CompetitionConsole({
           <EditionForm
             key={`${editingEdition.contestId}-${editingEdition.edition?.id ?? 'new'}-${editingEdition.edition?.version ?? 0}`}
             initial={editingEdition.configuration}
+            existingDraft={Boolean(editingEdition.edition)}
             readOnly={Boolean(
               editingEdition.edition &&
               editingEdition.edition.status !== 'draft',
@@ -433,7 +443,7 @@ export function CompetitionConsole({
             busy={busy}
             onCancel={() => setEditingEdition(null)}
             onSave={async (configuration) => {
-              await perform(async () => {
+              return perform(async () => {
                 const item = editingEdition;
                 await call(
                   `${base}/${item.contestId}/editions${item.edition ? `/${item.edition.id}` : ''}`,
@@ -472,7 +482,7 @@ export function CompetitionConsole({
                   initial={configuration}
                   readOnly
                   busy={false}
-                  onSave={async () => {}}
+                  onSave={async () => null}
                   onCancel={() => setHistory(null)}
                 />
               </details>

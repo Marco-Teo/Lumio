@@ -1,6 +1,10 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
+import {
+  regulatoryCatalog,
+  getRegulatoryProfile,
+} from '../../../lib/regulatory-profiles';
 import {
   maxPhotoBytes,
   photoSizeLabel,
@@ -31,17 +35,47 @@ function localDate(iso: string | null) {
 export function EditionForm({
   initial,
   readOnly,
+  existingDraft = false,
   busy,
   onSave,
   onCancel,
 }: {
   initial: EditionConfiguration;
   readOnly: boolean;
+  existingDraft?: boolean;
   busy: boolean;
-  onSave: (config: EditionConfiguration) => Promise<void>;
+  onSave: (config: EditionConfiguration) => Promise<string | null>;
   onCancel: () => void;
 }) {
   const [config, setConfig] = useState(initial);
+  const [pendingProfile, setPendingProfile] = useState<string | null>(null);
+  const profileSelect = useRef<HTMLSelectElement>(null);
+  const [profileDirty, setProfileDirty] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const selectedProfile = getRegulatoryProfile(
+    config.regulatoryProfile?.id ?? '',
+  );
+  const profileLabel = (id: string) => {
+    if (!id) return 'Indipendente';
+    const profile = getRegulatoryProfile(id);
+    return profile
+      ? `Guidata ${profile.authority} ${profile.normativeVersion} — ${profile.target === 'patrocinio' ? 'Patrocinio' : 'Raccomandazione'}`
+      : `Profilo non disponibile (${id})`;
+  };
+  function applyProfile(id: string) {
+    const { regulatoryProfile: previous, ...independent } = config;
+    void previous;
+    const next = id
+      ? { ...independent, regulatoryProfile: { id } }
+      : independent;
+    setConfig(next);
+    if (id !== (initial.regulatoryProfile?.id ?? '')) setProfileDirty(true);
+    setPendingProfile(null);
+    if (validated) {
+      const parsed = editionWriteSchema.safeParse(next);
+      setErrors(parsed.success ? [] : competitionFormIssues(parsed.error));
+    }
+  }
   const [photoLimitInput, setPhotoLimitInput] = useState(() =>
     photoMiBValue(initial.imageRules.maxBytes),
   );
@@ -76,6 +110,7 @@ export function EditionForm({
         className="edition-form"
         onSubmit={async (event) => {
           event.preventDefault();
+          if (pendingProfile !== null || readOnly || busy) return;
           setValidated(true);
           setErrors([]);
           const parsed = editionWriteSchema.safeParse(config);
@@ -83,7 +118,16 @@ export function EditionForm({
             setErrors(competitionFormIssues(parsed.error));
             return;
           }
-          await onSave(parsed.data);
+          setSaveError(null);
+          try {
+            const error = await onSave(parsed.data);
+            if (error !== null) setSaveError(error);
+            else setProfileDirty(false);
+          } catch {
+            setSaveError(
+              'Connessione non riuscita. Controlla la rete e riprova.',
+            );
+          }
         }}
       >
         <div className="editor-toolbar">
@@ -97,7 +141,11 @@ export function EditionForm({
               </span>
             </p>
           </div>
-          {!readOnly && <button disabled={busy}>Salva bozza</button>}
+          {!readOnly && (
+            <button disabled={busy || pendingProfile !== null}>
+              Salva bozza
+            </button>
+          )}
         </div>
         <nav className="editor-jumps" aria-label="Sezioni configurazione">
           {[
@@ -125,6 +173,149 @@ export function EditionForm({
           disabled={readOnly || busy}
         >
           <legend>Informazioni dell’edizione</legend>
+          <Field label="Tipo di configurazione" path="regulatoryProfile">
+            <select
+              ref={profileSelect}
+              value={pendingProfile ?? config.regulatoryProfile?.id ?? ''}
+              onChange={(event) => {
+                const id = event.target.value;
+                if (
+                  existingDraft &&
+                  id !== (config.regulatoryProfile?.id ?? '')
+                )
+                  setPendingProfile(id);
+                else applyProfile(id);
+              }}
+            >
+              <option value="">Indipendente</option>
+              {config.regulatoryProfile && !selectedProfile && (
+                <option value={config.regulatoryProfile.id}>
+                  {profileLabel(config.regulatoryProfile.id)}
+                </option>
+              )}
+              {regulatoryCatalog.profiles.map((profile) => (
+                <option key={profile.id} value={profile.id}>
+                  {profileLabel(profile.id)}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {!readOnly && (profileDirty || saveError) && (
+            <div aria-live="polite">
+              <p>
+                <strong>Modifiche non salvate</strong>
+              </p>
+              <p>
+                Profilo salvato:{' '}
+                {existingDraft
+                  ? profileLabel(initial.regulatoryProfile?.id ?? '')
+                  : 'Nessuna edizione ancora salvata'}
+                .
+              </p>
+              <p>
+                Profilo locale:{' '}
+                {profileLabel(config.regulatoryProfile?.id ?? '')}.
+              </p>
+              {saveError && (
+                <p role="alert">
+                  Salvataggio non confermato. La scelta locale e gli altri campi
+                  sono conservati. {saveError} In caso di conflitto, conserva le
+                  modifiche prima di ricaricare: il server potrebbe avere una
+                  versione più recente.
+                </p>
+              )}
+            </div>
+          )}
+          {pendingProfile !== null && (
+            <div role="group" aria-label="Conferma cambio configurazione">
+              <p>
+                Da: {profileLabel(config.regulatoryProfile?.id ?? '')}. A:{' '}
+                {profileLabel(pendingProfile)}.
+              </p>
+              <p>
+                Il cambiamento riguarda soltanto l’associazione del profilo. Le
+                altre impostazioni del concorso rimangono invariate. La scelta
+                sarà salvata con «Salva bozza».
+              </p>
+              <div className="actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    applyProfile(pendingProfile);
+                    profileSelect.current?.focus();
+                  }}
+                >
+                  Conferma cambio profilo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPendingProfile(null);
+                    profileSelect.current?.focus();
+                  }}
+                >
+                  Annulla cambio profilo
+                </button>
+              </div>
+            </div>
+          )}
+          {config.regulatoryProfile && (
+            <div className="regulatory-profile-summary">
+              <p>
+                Questa configurazione aiuta a seguire il regolamento FIAF. Non
+                concede Patrocinio o Raccomandazione e non garantisce
+                automaticamente la conformità del concorso.
+              </p>
+              <p>
+                Configurazione FIAF selezionata — verifiche normative non ancora
+                disponibili
+              </p>
+              {selectedProfile ? (
+                <>
+                  <p>
+                    {profileLabel(selectedProfile.id)}: riferimento al
+                    regolamento per l’obiettivo scelto. Versione normativa{' '}
+                    {selectedProfile.normativeVersion}, revisione{' '}
+                    {selectedProfile.normativeRevision}; implementazione Lumio{' '}
+                    {selectedProfile.implementationVersion}.
+                  </p>
+                  <p>
+                    Nessuna impostazione viene applicata automaticamente. Alcune
+                    verifiche richiedono un intervento umano.
+                  </p>
+                  <ul>
+                    {(
+                      [
+                        ['constraint', 'Vincoli verificabili'],
+                        ['parameter', 'Parametri configurabili'],
+                        ['recommendation', 'Raccomandazioni'],
+                        ['manual', 'Adempimenti manuali'],
+                        ['exception', 'Deroghe documentate'],
+                        ['open-question', 'Questioni aperte'],
+                      ] as const
+                    ).map(([kind, label]) => (
+                      <li key={kind}>
+                        {label}:{' '}
+                        {
+                          regulatoryCatalog.items.filter(
+                            (item) =>
+                              item.kind === kind &&
+                              selectedProfile.itemIds.includes(item.id),
+                          ).length
+                        }
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p>
+                  Il riferimento storico è conservato, ma il profilo non è
+                  disponibile nel catalogo corrente. Per salvare una bozza
+                  scegli un profilo disponibile.
+                </p>
+              )}
+            </div>
+          )}
           <Field label="Nome edizione" path="name">
             <input
               value={config.name}

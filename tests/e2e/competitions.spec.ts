@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { createDatabase } from '@lumio/database';
 import { authentication } from '../../apps/web/src/server/auth';
 import { totp } from './helpers';
+import { regulatoryCatalog } from '../../apps/web/src/lib/regulatory-profiles';
 
 test('organizer configures, versions, publishes and archives an edition', async ({
   page,
@@ -199,6 +200,183 @@ test('organizer configures, versions, publishes and archives an edition', async 
     await page.getByLabel('Anno o identificatore').fill('2027');
     await page.getByRole('button', { name: 'Salva bozza' }).click();
     await expect(page.getByRole('status')).toContainText('Bozza salvata');
+    const savedIndependent = await owner.edition.findFirstOrThrow({
+      where: { organizationId, name: 'Edizione 2027' },
+    });
+    const originalRevision = await owner.editionRevision.findFirstOrThrow({
+      where: { editionId: savedIndependent.id, version: 1 },
+    });
+    expect(originalRevision.configuration).not.toHaveProperty(
+      'regulatoryProfile',
+    );
+    const profileIds = regulatoryCatalog.profiles
+      .filter((profile) => profile.normativeVersion === '2027')
+      .map((profile) => profile.id);
+    const editionApi = `/api/v1/organizations/${organizationId}/contests/${savedIndependent.contestId}/editions/${savedIndependent.id}`;
+    const forged = await page.request.put(editionApi, {
+      headers: { Origin: 'http://127.0.0.1:3100' },
+      data: {
+        version: 1,
+        configuration: {
+          ...(originalRevision.configuration as object),
+          regulatoryProfile: {
+            id: profileIds[0],
+            normativeVersion: 'invented',
+          },
+        },
+      },
+    });
+    expect(forged.status()).toBe(400);
+    expect(
+      (
+        await owner.edition.findUniqueOrThrow({
+          where: { id: savedIndependent.id },
+        })
+      ).version,
+    ).toBe(1);
+    for (const id of [...profileIds, '', profileIds[0]]) {
+      await page.setViewportSize({
+        width: id === profileIds[0] ? 320 : 390,
+        height: 844,
+      });
+      await page.getByRole('button', { name: 'Configura edizione' }).click();
+      const selector = page.getByLabel('Tipo di configurazione', {
+        exact: true,
+      });
+      const previous = await selector.inputValue();
+      const before = await owner.edition.findUniqueOrThrow({
+        where: { id: savedIndependent.id },
+      });
+      await selector.selectOption(id);
+      const confirmation = page.getByRole('group', {
+        name: 'Conferma cambio configurazione',
+        exact: true,
+      });
+      await expect(confirmation).toContainText('Da:');
+      await expect(confirmation).toContainText('A:');
+      await expect(
+        page.getByRole('button', { name: 'Salva bozza' }),
+      ).toBeDisabled();
+      await page
+        .getByRole('button', { name: 'Annulla cambio profilo' })
+        .focus();
+      await page.keyboard.press('Enter');
+      await expect(selector).toHaveValue(previous);
+      await expect(selector).toBeFocused();
+      await expect(
+        page.getByText('Modifiche non salvate', { exact: true }),
+      ).toHaveCount(0);
+      expect(
+        (
+          await owner.edition.findUniqueOrThrow({
+            where: { id: savedIndependent.id },
+          })
+        ).version,
+      ).toBe(before.version);
+      await selector.selectOption(id);
+      await page
+        .getByRole('button', { name: 'Conferma cambio profilo' })
+        .focus();
+      await page.keyboard.press('Enter');
+      await expect(selector).toBeFocused();
+      await expect(
+        page.getByText('Modifiche non salvate', { exact: true }),
+      ).toBeVisible();
+      const box = await selector.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(
+        page.viewportSize()!.width,
+      );
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true);
+      if (id === profileIds[1]) {
+        await page
+          .getByLabel('Descrizione edizione')
+          .fill('Testo locale da conservare');
+        for (const failure of ['http', 'network', 'conflict'] as const) {
+          await page.route(
+            `**${editionApi}`,
+            async (route) => {
+              if (failure === 'network') await route.abort('failed');
+              else
+                await route.fulfill({
+                  status: failure === 'conflict' ? 409 : 503,
+                  contentType: 'application/json',
+                  body: JSON.stringify({
+                    message:
+                      failure === 'conflict'
+                        ? 'La bozza è cambiata. Ricarica la pagina.'
+                        : 'Servizio temporaneamente non disponibile',
+                  }),
+                });
+            },
+            { times: 1 },
+          );
+          await page.getByRole('button', { name: 'Salva bozza' }).click();
+          await expect(
+            page.locator('.edition-form').getByRole('alert'),
+          ).toContainText('Salvataggio non confermato');
+          await expect(
+            page.getByText('Modifiche non salvate', { exact: true }),
+          ).toBeVisible();
+          await expect(selector).toHaveValue(id);
+          await expect(page.getByLabel('Descrizione edizione')).toHaveValue(
+            'Testo locale da conservare',
+          );
+          await expect(page.getByRole('status')).not.toContainText(
+            'Bozza salvata',
+          );
+          expect(
+            (
+              await owner.edition.findUniqueOrThrow({
+                where: { id: savedIndependent.id },
+              })
+            ).version,
+          ).toBe(before.version);
+        }
+        await page.getByLabel('Descrizione edizione').fill('');
+      }
+      if (id)
+        await expect(
+          page
+            .getByText(
+              'Configurazione FIAF selezionata — verifiche normative non ancora disponibili',
+              { exact: true },
+            )
+            .last(),
+        ).toBeVisible();
+      await page.getByRole('button', { name: 'Salva bozza' }).click();
+      await expect(page.getByRole('status')).toContainText('Bozza salvata');
+      await expect(
+        page.getByText('Modifiche non salvate', { exact: true }),
+      ).toHaveCount(0);
+      const updated = await owner.edition.findUniqueOrThrow({
+        where: { id: savedIndependent.id },
+      });
+      const revision = await owner.editionRevision.findFirstOrThrow({
+        where: { editionId: updated.id, version: updated.version },
+      });
+      expect(revision.configuration).toEqual({
+        ...(originalRevision.configuration as object),
+        ...(id ? { regulatoryProfile: { id } } : {}),
+      });
+      await page.reload();
+      await page.getByRole('button', { name: 'Configura edizione' }).click();
+      await expect(selector).toHaveValue(id);
+      await page.getByRole('button', { name: 'Chiudi configurazione' }).click();
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+    expect(
+      (
+        await owner.editionRevision.findFirstOrThrow({
+          where: { editionId: savedIndependent.id, version: 1 },
+        })
+      ).configuration,
+    ).toEqual(originalRevision.configuration);
     for (const [input, bytes] of [
       ['25', 26_214_400],
       ['12,5', 13_107_200],
@@ -362,6 +540,12 @@ test('organizer configures, versions, publishes and archives an edition', async 
       .getByRole('button', { name: 'Visualizza configurazione' })
       .click();
     await expect(page.getByLabel('Nome edizione')).toBeDisabled();
+    await expect(
+      page.getByLabel('Tipo di configurazione', { exact: true }),
+    ).toBeDisabled();
+    await expect(
+      page.getByLabel('Tipo di configurazione', { exact: true }),
+    ).toHaveValue(profileIds[0]);
     await page.getByRole('button', { name: 'Chiudi configurazione' }).click();
     await page.getByRole('button', { name: 'Archivia edizione' }).click();
     await expect(page.getByRole('status')).toContainText('Edizione archiviata');
@@ -385,6 +569,48 @@ test('organizer configures, versions, publishes and archives an edition', async 
     await page.getByRole('link', { name: 'Il tuo account' }).click();
     await page.getByRole('link', { name: 'Torna alla home' }).click();
     await expect(page).toHaveURL('/');
+    // New editions can start with either profile without an existing-draft confirmation.
+    await page.goto(`/organizations/${organizationId}`);
+    for (const [index, id] of profileIds.entries()) {
+      const name = `Nuova guidata ${index}`;
+      await page
+        .getByRole('button', { name: 'Nuova edizione', exact: true })
+        .click();
+      await page
+        .getByLabel('Tipo di configurazione', { exact: true })
+        .selectOption(id);
+      await expect(
+        page.getByRole('group', {
+          name: 'Conferma cambio configurazione',
+          exact: true,
+        }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByText('Modifiche non salvate', { exact: true }),
+      ).toBeVisible();
+      await page.getByLabel('Nome edizione').fill(name);
+      await page.getByLabel('Slug edizione').fill(`nuova-guidata-${index}`);
+      await page.getByLabel('Anno o identificatore').fill('2027');
+      await page.getByRole('button', { name: 'Salva bozza' }).click();
+      await expect(page.getByRole('status')).toContainText('Bozza salvata');
+      await expect(
+        page.getByText('Modifiche non salvate', { exact: true }),
+      ).toHaveCount(0);
+      await page.reload();
+      const row = page.locator('.edition-row').filter({
+        has: page.getByRole('heading', {
+          name: `${name} — 2027`,
+          exact: true,
+        }),
+      });
+      await row
+        .getByRole('button', { name: 'Configura edizione', exact: true })
+        .click();
+      await expect(
+        page.getByLabel('Tipo di configurazione', { exact: true }),
+      ).toHaveValue(id);
+      await page.getByRole('button', { name: 'Chiudi configurazione' }).click();
+    }
   } finally {
     if (organizationId) {
       const where = { organizationId };
