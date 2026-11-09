@@ -14,7 +14,9 @@ export function AppHeader() {
         <nav aria-label="Navigazione principale">
           <Link
             href="/editions"
-            aria-current={path.startsWith('/editions') ? 'page' : undefined}
+            aria-current={
+              path === '/' || path.startsWith('/editions') ? 'page' : undefined
+            }
           >
             Esplora
           </Link>

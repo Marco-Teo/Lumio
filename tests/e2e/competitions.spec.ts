@@ -108,7 +108,10 @@ test('organizer configures, versions, publishes and archives an edition', async 
         .filter((cookie) => cookie.value),
     );
     await page.goto('/account');
-    await page.getByRole('link', { name: 'Le tue organizzazioni' }).click();
+    await page
+      .getByRole('main')
+      .getByRole('link', { name: 'Le tue organizzazioni' })
+      .click();
     await page.getByRole('link', { name: org.name }).click();
     await expect(page.getByRole('heading', { name: org.name })).toBeVisible();
     expect(
