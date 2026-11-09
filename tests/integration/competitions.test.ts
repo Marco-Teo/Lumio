@@ -465,6 +465,17 @@ test('competition lifecycle, tenant isolation and immutable revisions', async (t
           ...complete,
           slug: `profile-${profile.target}`,
           regulatoryProfile: { id: profile.id },
+          regulatorySections: {
+            profileId: profile.id,
+            sections: [
+              {
+                sectionCode: 'P',
+                sectionType: 'PORTFOLIO',
+                themeCode: 'PA',
+                category: 'TRAD',
+              },
+            ],
+          },
         };
         const edition = await saveEdition(actor, orgA, contestId, {
           configuration,
@@ -521,8 +532,43 @@ test('competition lifecycle, tenant isolation and immutable revisions', async (t
           ),
           /profilo normativo/,
         );
-        const { regulatoryProfile, ...independent } = configuration;
+        const { regulatoryProfile, regulatorySections, ...independent } =
+          configuration;
         assert.equal(regulatoryProfile.id, profile.id);
+        assert.equal(regulatorySections.sections[0].sectionCode, 'P');
+        for (const invalid of [
+          {
+            ...configuration,
+            regulatorySections: {
+              ...regulatorySections,
+              profileId: 'invented',
+            },
+          },
+          {
+            ...configuration,
+            regulatorySections: {
+              ...regulatorySections,
+              sections: [
+                { ...regulatorySections.sections[0], sectionType: 'invented' },
+              ],
+            },
+          },
+          { ...configuration, sections: [] },
+          {
+            ...configuration,
+            sections: [{ ...configuration.sections[0], code: 'RENAMED' }],
+          },
+          { ...configuration, regulatoryProfile: undefined },
+        ])
+          await assert.rejects(
+            saveEdition(
+              actor,
+              orgA,
+              contestId,
+              { version: 1, configuration: invalid },
+              edition.id,
+            ),
+          );
         await saveEdition(
           actor,
           orgA,
@@ -530,15 +576,45 @@ test('competition lifecycle, tenant isolation and immutable revisions', async (t
           { version: 1, configuration: independent },
           edition.id,
         );
-        await saveEdition(
-          actor,
-          orgA,
-          contestId,
-          { version: 2, configuration },
-          edition.id,
+        const alternative = {
+          ...configuration,
+          regulatorySections: {
+            ...regulatorySections,
+            sections: [{ ...regulatorySections.sections[0], themeCode: 'LB' }],
+          },
+        };
+        const candidates = [configuration, alternative];
+        const concurrent = await Promise.allSettled(
+          candidates.map((candidate) =>
+            saveEdition(
+              actor,
+              orgA,
+              contestId,
+              { version: 2, configuration: candidate },
+              edition.id,
+            ),
+          ),
         );
+        assert.equal(
+          concurrent.filter((result) => result.status === 'fulfilled').length,
+          1,
+        );
+        const rejected = concurrent.find(
+          (result) => result.status === 'rejected',
+        );
+        assert.ok(
+          rejected?.status === 'rejected' && rejected.reason.status === 409,
+        );
+        const winningConfiguration =
+          candidates[
+            concurrent.findIndex((result) => result.status === 'fulfilled')
+          ];
         const before = await read();
-        assert.deepEqual(before, [configuration, independent, configuration]);
+        assert.deepEqual(before, [
+          configuration,
+          independent,
+          winningConfiguration,
+        ]);
         // The existing portfolio of 3 images stays valid: no FIAF presets/validation.
         await transitionEdition(actor, orgA, contestId, edition.id, {
           version: 3,
@@ -561,7 +637,7 @@ test('competition lifecycle, tenant isolation and immutable revisions', async (t
             .find((contest) => contest.id === contestId)
             ?.editions.find((row) => row.id === edition.id)?.revisions[0]
             .configuration,
-          configuration,
+          winningConfiguration,
         );
       }
     },

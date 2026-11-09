@@ -4,6 +4,7 @@ import { createDatabase } from '@lumio/database';
 import { authentication } from '../../apps/web/src/server/auth';
 import { totp } from './helpers';
 import { regulatoryCatalog } from '../../apps/web/src/lib/regulatory-profiles';
+import { editionSchema } from '../../apps/web/src/lib/competitions';
 
 test('organizer configures, versions, publishes and archives an edition', async ({
   page,
@@ -461,7 +462,7 @@ test('organizer configures, versions, publishes and archives an edition', async 
     await page.getByRole('button', { name: 'Salva bozza' }).click();
     await expect(
       page.getByRole('alert', { name: 'Errori di compilazione' }),
-    ).toContainText('Sezione 2 · Codice sezione: Questo codice è già usato');
+    ).toContainText('Sezione 2 · Codice sezione: Codice già utilizzato');
     await expect(
       page.getByRole('alert', { name: 'Errori di compilazione' }),
     ).toContainText(
@@ -571,7 +572,12 @@ test('organizer configures, versions, publishes and archives an edition', async 
     await expect(page).toHaveURL('/');
     // New editions can start with either profile without an existing-draft confirmation.
     await page.goto(`/organizations/${organizationId}`);
+    page.removeAllListeners('dialog');
     for (const [index, id] of profileIds.entries()) {
+      await page.setViewportSize({
+        width: index === 0 ? 320 : 390,
+        height: 844,
+      });
       const name = `Nuova guidata ${index}`;
       await page
         .getByRole('button', { name: 'Nuova edizione', exact: true })
@@ -591,6 +597,112 @@ test('organizer configures, versions, publishes and archives an edition', async 
       await page.getByLabel('Nome edizione').fill(name);
       await page.getByLabel('Slug edizione').fill(`nuova-guidata-${index}`);
       await page.getByLabel('Anno o identificatore').fill('2027');
+      for (let sectionIndex = 0; sectionIndex < 3; sectionIndex++)
+        await page.getByRole('button', { name: 'Aggiungi sezione' }).click();
+      const classificationIds = await page
+        .getByLabel('Sezione normativa FIAF', { exact: true })
+        .evaluateAll((elements) => elements.map((element) => element.id));
+      expect(classificationIds).toHaveLength(3);
+      expect(new Set(classificationIds).size).toBe(3);
+      for (const [position, sectionType] of [
+        'DIG',
+        'PORTFOLIO',
+        'IS',
+      ].entries()) {
+        const group = page.getByRole('group', {
+          name: `Sezione ${position + 1}`,
+          exact: true,
+        });
+        await group
+          .getByLabel('Nome sezione', { exact: true })
+          .fill(`Classificata ${sectionType}`);
+        await group
+          .getByLabel('Codice sezione', { exact: true })
+          .fill(`OWN-${position + 1}`);
+        await group
+          .getByLabel('Tema', { exact: true })
+          .fill('Testo libero dell’organizzatore');
+        if (position === 1) {
+          const first = page.getByRole('group', {
+            name: 'Sezione 1',
+            exact: true,
+          });
+          await group
+            .getByLabel('Codice sezione', { exact: true })
+            .fill('OWN-1');
+          await expect(
+            group.getByLabel('Codice sezione', { exact: true }),
+          ).toHaveValue('OWN-2');
+          await expect(
+            group.getByText('Codice già utilizzato', { exact: false }),
+          ).toBeVisible();
+          await group
+            .getByLabel('Codice sezione', { exact: true })
+            .fill('OWN-B');
+          await expect(
+            first.getByLabel('Codice tema normativo FIAF'),
+          ).toHaveValue('PA');
+          await expect(
+            first.getByLabel('Categoria normativa FIAF'),
+          ).toHaveValue('TRAD');
+          await group
+            .getByRole('button', { name: 'Rimuovi sezione', exact: true })
+            .click();
+          await expect(
+            page.getByRole('button', { name: 'Aggiungi sezione' }),
+          ).toBeFocused();
+          await expect(
+            first.getByLabel('Codice tema normativo FIAF'),
+          ).toHaveValue('PA');
+          await expect(
+            first.getByLabel('Categoria normativa FIAF'),
+          ).toHaveValue('TRAD');
+          await page.getByRole('button', { name: 'Aggiungi sezione' }).click();
+          await group
+            .getByLabel('Nome sezione', { exact: true })
+            .fill(`Classificata ${sectionType}`);
+          await group
+            .getByLabel('Codice sezione', { exact: true })
+            .fill('OWN-2');
+          await group
+            .getByLabel('Tema', { exact: true })
+            .fill('Testo libero dell’organizzatore');
+        }
+        if (sectionType === 'PORTFOLIO')
+          await group
+            .getByLabel('Tipo opera', { exact: true })
+            .selectOption('portfolio');
+        const beforeMin = await group
+          .getByLabel('Minimo immagini per opera')
+          .inputValue();
+        const beforeMax = await group
+          .getByLabel('Massimo immagini per opera')
+          .inputValue();
+        await group
+          .getByLabel('Sezione normativa FIAF', { exact: true })
+          .selectOption(sectionType);
+        await group
+          .getByLabel('Codice tema normativo FIAF')
+          .fill(sectionType === 'IS' ? 'LB' : 'PA');
+        if (sectionType === 'DIG')
+          await group
+            .getByLabel('Categoria normativa FIAF')
+            .selectOption('TRAD');
+        await expect(group.getByLabel('Minimo immagini per opera')).toHaveValue(
+          beforeMin,
+        );
+        await expect(
+          group.getByLabel('Massimo immagini per opera'),
+        ).toHaveValue(beforeMax);
+        await expect(group.getByLabel('Tema', { exact: true })).toHaveValue(
+          'Testo libero dell’organizzatore',
+        );
+      }
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true);
       await page.getByRole('button', { name: 'Salva bozza' }).click();
       await expect(page.getByRole('status')).toContainText('Bozza salvata');
       await expect(
@@ -609,6 +721,362 @@ test('organizer configures, versions, publishes and archives an edition', async 
       await expect(
         page.getByLabel('Tipo di configurazione', { exact: true }),
       ).toHaveValue(id);
+      const firstGroup = page.getByRole('group', {
+        name: 'Sezione 1',
+        exact: true,
+      });
+      await expect(
+        firstGroup.getByLabel('Sezione normativa FIAF', { exact: true }),
+      ).toHaveValue('DIG');
+      await expect(
+        firstGroup.getByLabel('Categoria normativa FIAF'),
+      ).toHaveValue('TRAD');
+      const savedMapping = await owner.edition.findFirstOrThrow({
+        where: { organizationId, name },
+      });
+      const firstRevision = await owner.editionRevision.findFirstOrThrow({
+        where: { editionId: savedMapping.id, version: 1 },
+      });
+      for (const theme of ['NA', 'NW', 'RP', 'TR']) {
+        await firstGroup.getByLabel('Codice tema normativo FIAF').fill(theme);
+        await expect(
+          firstGroup.getByLabel('Categoria normativa FIAF'),
+        ).toHaveValue('TRAD');
+        await expect(
+          firstGroup
+            .getByLabel('Categoria normativa FIAF')
+            .locator('option[value="TRAD"]'),
+        ).toBeDisabled();
+      }
+      await firstGroup.getByLabel('Codice tema normativo FIAF').fill('PA');
+      await firstGroup
+        .getByLabel('Sezione normativa FIAF', { exact: true })
+        .selectOption('IS');
+      await expect(
+        firstGroup
+          .getByLabel('Categoria normativa FIAF')
+          .locator('option[value="TRAD"]'),
+      ).toBeDisabled();
+      await expect(
+        firstGroup.getByLabel('Categoria normativa FIAF'),
+      ).toHaveValue('TRAD');
+      await firstGroup.getByLabel('Categoria normativa FIAF').selectOption('');
+      await firstGroup
+        .getByLabel('Sezione normativa FIAF', { exact: true })
+        .selectOption('DIG');
+      await firstGroup
+        .getByLabel('Categoria normativa FIAF')
+        .selectOption('TRAD');
+      const mappingApi = `/api/v1/organizations/${organizationId}/contests/${savedMapping.contestId}/editions/${savedMapping.id}`;
+      await firstGroup.getByLabel('Codice tema normativo FIAF').fill('AR');
+      for (const status of [503, 409]) {
+        await page.route(
+          `**${mappingApi}`,
+          (route) =>
+            route.fulfill({
+              status,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                message:
+                  status === 409
+                    ? 'La bozza è cambiata.'
+                    : 'Servizio non disponibile.',
+              }),
+            }),
+          { times: 1 },
+        );
+        await page.getByRole('button', { name: 'Salva bozza' }).click();
+        await expect(
+          page.locator('.edition-form').getByRole('alert').last(),
+        ).toContainText('Salvataggio non confermato');
+        await expect(
+          firstGroup.getByLabel('Codice tema normativo FIAF'),
+        ).toHaveValue('AR');
+        await expect(page.getByRole('status')).not.toContainText(
+          'Bozza salvata',
+        );
+        expect(
+          (
+            await owner.edition.findUniqueOrThrow({
+              where: { id: savedMapping.id },
+            })
+          ).version,
+        ).toBe(savedMapping.version);
+      }
+      await firstGroup.getByLabel('Codice tema normativo FIAF').fill('PA');
+      expect(firstRevision.configuration).toMatchObject({
+        regulatorySections: {
+          profileId: id,
+          sections: [
+            {
+              sectionCode: 'OWN-1',
+              sectionType: 'DIG',
+              themeCode: 'PA',
+              category: 'TRAD',
+            },
+            { sectionCode: 'OWN-2', sectionType: 'PORTFOLIO', themeCode: 'PA' },
+            { sectionCode: 'OWN-3', sectionType: 'IS', themeCode: 'LB' },
+          ],
+        },
+      });
+      if (index === 0) {
+        await page
+          .getByRole('button', { name: 'Chiudi configurazione' })
+          .click();
+        const listApi = `/api/v1/organizations/${organizationId}/contests`;
+        await page.route(
+          `**${listApi}`,
+          async (route) => {
+            const response = await route.fetch();
+            const list = (await response.json()) as {
+              contests: Array<{
+                editions: Array<{
+                  id: string;
+                  revisions: Array<{ configuration: unknown }>;
+                }>;
+              }>;
+            };
+            const edition = list.contests
+              .flatMap((contest) => contest.editions)
+              .find((edition) => edition.id === savedMapping.id)!;
+            const config = editionSchema.parse(
+              edition.revisions[0].configuration,
+            );
+            const mapping = config.regulatorySections!;
+            edition.revisions[0].configuration = {
+              ...config,
+              regulatorySections: {
+                ...mapping,
+                sections: [...mapping.sections, mapping.sections[0]],
+              },
+            };
+            await route.fulfill({ response, json: list });
+          },
+          { times: 1 },
+        );
+        await page.reload();
+        await row
+          .getByRole('button', { name: 'Configura edizione', exact: true })
+          .click();
+        await expect(
+          firstGroup.getByLabel('Sezione normativa FIAF', { exact: true }),
+        ).toBeDisabled();
+        await expect(
+          firstGroup.getByLabel('Codice tema normativo FIAF'),
+        ).toBeDisabled();
+        await expect(
+          firstGroup.getByLabel('Categoria normativa FIAF'),
+        ).toBeDisabled();
+        await firstGroup
+          .getByRole('button', { name: 'Rimuovi sezione', exact: true })
+          .click();
+        await expect(
+          page
+            .locator('.edition-form')
+            .getByText('Associazione ambigua:', { exact: false })
+            .first(),
+        ).toBeVisible();
+        await firstGroup
+          .getByRole('button', {
+            name: 'Rinomina codice e aggiorna classificazione',
+          })
+          .click();
+        await page
+          .getByRole('link', {
+            name: /^Classificazione normativa delle sezioni:/,
+          })
+          .first()
+          .click();
+        await expect(
+          page.getByRole('group', {
+            name: 'Classificazione normativa delle sezioni',
+            exact: true,
+          }),
+        ).toBeFocused();
+        await page.getByRole('button', { name: 'Salva bozza' }).click();
+        await page
+          .getByRole('link', {
+            name: /^Classificazione normativa delle sezioni:/,
+          })
+          .first()
+          .click();
+        await expect(
+          page.getByRole('group', {
+            name: 'Classificazione normativa delle sezioni',
+            exact: true,
+          }),
+        ).toBeFocused();
+        expect(
+          (
+            await owner.editionRevision.findFirstOrThrow({
+              where: { editionId: savedMapping.id, version: 1 },
+            })
+          ).configuration,
+        ).toEqual(firstRevision.configuration);
+        // Historical incompatibility is injected only in the browser response.
+        await page.route(
+          `**${listApi}`,
+          async (route) => {
+            const response = await route.fetch();
+            const list = (await response.json()) as {
+              contests: Array<{
+                editions: Array<{
+                  id: string;
+                  revisions: Array<{ configuration: unknown }>;
+                }>;
+              }>;
+            };
+            const edition = list.contests
+              .flatMap((contest) => contest.editions)
+              .find((edition) => edition.id === savedMapping.id)!;
+            const config = editionSchema.parse(
+              edition.revisions[0].configuration,
+            );
+            const mapping = config.regulatorySections!;
+            edition.revisions[0].configuration = {
+              ...config,
+              regulatorySections: {
+                ...mapping,
+                sections: mapping.sections.map((classification, i) =>
+                  i === 0
+                    ? {
+                        ...classification,
+                        sectionType: 'IS',
+                        themeCode: 'LB',
+                        category: 'TRAD',
+                      }
+                    : classification,
+                ),
+              },
+            };
+            await route.fulfill({ response, json: list });
+          },
+          { times: 1 },
+        );
+        await page.reload();
+        await row
+          .getByRole('button', { name: 'Configura edizione', exact: true })
+          .click();
+        await expect(
+          firstGroup.getByLabel('Categoria normativa FIAF'),
+        ).toHaveValue('TRAD');
+        await expect(
+          firstGroup
+            .getByLabel('Categoria normativa FIAF')
+            .locator('option[value="TRAD"]'),
+        ).toBeDisabled();
+        await firstGroup
+          .getByLabel('Categoria normativa FIAF')
+          .selectOption('');
+        await expect(
+          firstGroup.getByLabel('Categoria normativa FIAF'),
+        ).toHaveValue('');
+        page.once('dialog', (dialog) => dialog.accept());
+        await firstGroup
+          .getByLabel('Sezione normativa FIAF', { exact: true })
+          .selectOption('');
+        await expect(
+          firstGroup.getByLabel('Sezione normativa FIAF', { exact: true }),
+        ).toBeFocused();
+        await firstGroup
+          .getByLabel('Sezione normativa FIAF', { exact: true })
+          .selectOption('DIG');
+        await firstGroup.getByLabel('Codice tema normativo FIAF').fill('PA');
+        await firstGroup
+          .getByLabel('Categoria normativa FIAF')
+          .selectOption('TRAD');
+        page.once('dialog', (dialog) => dialog.dismiss());
+        await firstGroup
+          .getByRole('button', {
+            name: 'Rinomina codice e aggiorna classificazione',
+          })
+          .click();
+        await expect(
+          firstGroup.getByLabel('Codice sezione', { exact: true }),
+        ).toHaveValue('OWN-1');
+        page.once('dialog', (dialog) => dialog.accept('OWN-NEW'));
+        await firstGroup
+          .getByRole('button', {
+            name: 'Rinomina codice e aggiorna classificazione',
+          })
+          .click();
+        await expect(
+          firstGroup.getByLabel('Codice sezione', { exact: true }),
+        ).toHaveValue('OWN-NEW');
+        const secondGroup = page.getByRole('group', {
+          name: 'Sezione 2',
+          exact: true,
+        });
+        page.once('dialog', (dialog) => dialog.dismiss());
+        await secondGroup
+          .getByRole('button', { name: 'Rimuovi sezione', exact: true })
+          .click();
+        await expect(
+          secondGroup.getByLabel('Sezione normativa FIAF', { exact: true }),
+        ).toHaveValue('PORTFOLIO');
+        page.once('dialog', (dialog) => dialog.accept());
+        await secondGroup
+          .getByRole('button', { name: 'Rimuovi sezione', exact: true })
+          .click();
+        await expect(
+          page.getByRole('button', { name: 'Aggiungi sezione' }),
+        ).toBeFocused();
+        await page.getByRole('button', { name: 'Salva bozza' }).click();
+        await expect(page.getByRole('status')).toContainText('Bozza salvata');
+        await row
+          .getByRole('button', { name: 'Configura edizione', exact: true })
+          .click();
+        await expect(
+          firstGroup.getByLabel('Codice sezione', { exact: true }),
+        ).toHaveValue('OWN-NEW');
+        await expect(
+          page
+            .getByRole('group', { name: 'Sezione 2', exact: true })
+            .getByLabel('Sezione normativa FIAF', { exact: true }),
+        ).toHaveValue('IS');
+      }
+      await page
+        .getByLabel('Tipo di configurazione', { exact: true })
+        .selectOption(index === 0 ? profileIds[1] : '');
+      page.once('dialog', (dialog) => dialog.dismiss());
+      await page
+        .getByRole('button', { name: 'Conferma cambio profilo' })
+        .click();
+      await expect(
+        firstGroup.getByLabel('Sezione normativa FIAF', { exact: true }),
+      ).toHaveValue('DIG');
+      await page
+        .getByRole('button', { name: 'Annulla cambio profilo' })
+        .click();
+      await expect(
+        page.getByLabel('Tipo di configurazione', { exact: true }),
+      ).toHaveValue(id);
+      await page
+        .getByLabel('Tipo di configurazione', { exact: true })
+        .selectOption(index === 0 ? profileIds[1] : '');
+      page.once('dialog', (dialog) => dialog.accept());
+      await page
+        .getByRole('button', { name: 'Conferma cambio profilo' })
+        .click();
+      await page.getByRole('button', { name: 'Salva bozza' }).click();
+      await expect(page.getByRole('status')).toContainText('Bozza salvata');
+      const latestMapping = await owner.editionRevision.findFirstOrThrow({
+        where: { editionId: savedMapping.id },
+        orderBy: { version: 'desc' },
+      });
+      expect(latestMapping.configuration).not.toHaveProperty(
+        'regulatorySections',
+      );
+      expect(
+        (
+          await owner.editionRevision.findFirstOrThrow({
+            where: { editionId: savedMapping.id, version: 1 },
+          })
+        ).configuration,
+      ).toEqual(firstRevision.configuration);
+      await row
+        .getByRole('button', { name: 'Configura edizione', exact: true })
+        .click();
       await page.getByRole('button', { name: 'Chiudi configurazione' }).click();
     }
   } finally {

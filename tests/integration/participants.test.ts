@@ -93,6 +93,10 @@ test('participant profile and registration ownership across tenants', async (t) 
   const config = {
     ...emptyEdition('Edizione aperta', 'edizione-aperta', '2026'),
     regulatoryProfile: { id: regulatoryCatalog.profiles[0].id },
+    regulatorySections: {
+      profileId: regulatoryCatalog.profiles[0].id,
+      sections: [{ sectionCode: 'L', sectionType: 'DIG', themeCode: 'PA' }],
+    },
     description: 'Edizione per iscrizioni sintetiche',
     opensAt: at(-1),
     closesAt: at(1),

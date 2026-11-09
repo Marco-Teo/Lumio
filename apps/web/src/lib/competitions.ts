@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { getRegulatoryProfile } from './regulatory-profiles';
 import {
+  regulatorySectionsSchema,
+  fiaf2027SectionClassificationSchema,
+} from './fiaf-classification';
+import {
   maxPhotoBytes,
   maxPhotoPixels,
   photoSizeLabel,
@@ -69,6 +73,7 @@ export const editionSchema = z
       .object({ id: z.string().min(1).max(200) })
       .strict()
       .optional(),
+    regulatorySections: regulatorySectionsSchema.optional(),
     description: z.string().trim().max(5000),
     opensAt: optionalDate,
     closesAt: optionalDate,
@@ -175,6 +180,61 @@ export const editionSchema = z
 
 // Preserve historical reads; current constraints apply only to draft writes/publication.
 export const editionWriteSchema = editionSchema.superRefine((edition, ctx) => {
+  const mapping = edition.regulatorySections;
+  if (mapping) {
+    const profile = getRegulatoryProfile(mapping.profileId);
+    if (
+      !edition.regulatoryProfile ||
+      mapping.profileId !== edition.regulatoryProfile.id ||
+      profile?.authority !== 'FIAF' ||
+      profile.normativeVersion !== '2027'
+    )
+      ctx.addIssue({
+        code: 'custom',
+        path: ['regulatorySections'],
+        message:
+          'La classificazione deve riferirsi al profilo FIAF 2027 selezionato. Conferma come gestire la mappatura prima di salvare.',
+      });
+    mapping.sections.forEach((classification, index) => {
+      const path = ['regulatorySections', 'sections', index];
+      if (
+        !edition.sections.some(
+          (section) => section.code === classification.sectionCode,
+        )
+      )
+        ctx.addIssue({
+          code: 'custom',
+          path,
+          message:
+            'La classificazione fa riferimento a una sezione inesistente. Aggiorna il codice locale o rimuovi esplicitamente la mappatura.',
+        });
+      if (
+        mapping.sections.some(
+          (other, otherIndex) =>
+            otherIndex < index &&
+            other.sectionCode === classification.sectionCode,
+        )
+      )
+        ctx.addIssue({
+          code: 'custom',
+          path,
+          message:
+            'Ogni codice locale può avere una sola classificazione normativa.',
+        });
+      const parsed =
+        fiaf2027SectionClassificationSchema.safeParse(classification);
+      if (!parsed.success)
+        for (const issue of parsed.error.issues)
+          ctx.addIssue({
+            code: 'custom',
+            path: [...path, ...issue.path],
+            message:
+              issue.code === 'custom'
+                ? issue.message
+                : 'Scegli una classificazione FIAF 2027 disponibile.',
+          });
+    });
+  }
   if (
     edition.regulatoryProfile &&
     !getRegulatoryProfile(edition.regulatoryProfile.id)

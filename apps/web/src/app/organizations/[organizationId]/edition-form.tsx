@@ -2,6 +2,12 @@
 
 import { useId, useRef, useState } from 'react';
 import {
+  fiaf2027SectionTypes,
+  fiaf2027Themes,
+  fiaf2027TradAllowed,
+  type SectionClassification,
+} from '../../../lib/fiaf-classification';
+import {
   regulatoryCatalog,
   getRegulatoryProfile,
 } from '../../../lib/regulatory-profiles';
@@ -52,6 +58,9 @@ export function EditionForm({
   const profileSelect = useRef<HTMLSelectElement>(null);
   const [profileDirty, setProfileDirty] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const addSectionButton = useRef<HTMLButtonElement>(null);
+  const [codeErrors, setCodeErrors] = useState<Record<number, string>>({});
+  const [mappingError, setMappingError] = useState('');
   const selectedProfile = getRegulatoryProfile(
     config.regulatoryProfile?.id ?? '',
   );
@@ -63,12 +72,27 @@ export function EditionForm({
       : `Profilo non disponibile (${id})`;
   };
   function applyProfile(id: string) {
-    const { regulatoryProfile: previous, ...independent } = config;
+    const {
+      regulatoryProfile: previous,
+      regulatorySections,
+      ...independent
+    } = config;
     void previous;
+    if (
+      regulatorySections &&
+      regulatorySections.profileId !== id &&
+      !window.confirm(
+        'La mappatura normativa appartiene al profilo precedente. Rimuoverla per cambiare profilo? Le altre impostazioni rimangono invariate. Annulla per conservarla.',
+      )
+    )
+      return;
+    const retainedMapping =
+      regulatorySections?.profileId === id ? { regulatorySections } : {};
     const next = id
-      ? { ...independent, regulatoryProfile: { id } }
+      ? { ...independent, ...retainedMapping, regulatoryProfile: { id } }
       : independent;
     setConfig(next);
+    setMappingError('');
     if (id !== (initial.regulatoryProfile?.id ?? '')) setProfileDirty(true);
     setPendingProfile(null);
     if (validated) {
@@ -83,6 +107,130 @@ export function EditionForm({
   const [activeSection, setActiveSection] = useState('general');
   const [errors, setErrors] = useState<CompetitionFormIssue[]>([]);
   const [validated, setValidated] = useState(false);
+  function ambiguous(code: string) {
+    return (
+      config.sections.filter((row) => row.code.trim() === code.trim())
+        .length !== 1 ||
+      (config.regulatorySections?.sections.filter(
+        (row) => row.sectionCode === code,
+      ).length ?? 0) > 1
+    );
+  }
+  function blockAmbiguous(code: string) {
+    if (!ambiguous(code)) return false;
+    setMappingError(
+      'Associazione ambigua: il codice locale o la sua classificazione è duplicato. Nessun dato è stato modificato. Risolvi i duplicati prima di modificare, rinominare o eliminare la mappatura.',
+    );
+    return true;
+  }
+  function update(next: EditionConfiguration) {
+    setMappingError('');
+    setConfig(next);
+    if (config.regulatorySections || next.regulatorySections)
+      setProfileDirty(true);
+    if (validated) {
+      const parsed = editionWriteSchema.safeParse(next);
+      setErrors(parsed.success ? [] : competitionFormIssues(parsed.error));
+    }
+  }
+  function classification(
+    code: string,
+    value: SectionClassification | undefined,
+  ) {
+    const previous = config.regulatorySections;
+    if (blockAmbiguous(code)) return;
+    if (previous && previous.profileId !== config.regulatoryProfile?.id) return;
+    const sections = [
+      ...(previous?.sections.filter((row) => row.sectionCode !== code) ?? []),
+      ...(value ? [value] : []),
+    ];
+    const { regulatorySections: omitted, ...rest } = config;
+    void omitted;
+    update(
+      sections.length
+        ? {
+            ...rest,
+            regulatorySections: {
+              profileId: config.regulatoryProfile!.id,
+              sections,
+            },
+          }
+        : rest,
+    );
+  }
+  function removeSection(index: number) {
+    const code = config.sections[index].code;
+    if (
+      config.regulatorySections?.sections.some(
+        (row) => row.sectionCode === code,
+      ) &&
+      blockAmbiguous(code)
+    )
+      return;
+    if (
+      config.regulatorySections?.sections.some(
+        (row) => row.sectionCode === code,
+      ) &&
+      !window.confirm(
+        'Rimuovere la sezione e la classificazione normativa associata? Annulla per conservarle.',
+      )
+    )
+      return;
+    update({
+      ...config,
+      sections: config.sections.filter((_, i) => i !== index),
+      ...(config.regulatorySections
+        ? {
+            regulatorySections: {
+              ...config.regulatorySections,
+              sections: config.regulatorySections.sections.filter(
+                (row) => row.sectionCode !== code,
+              ),
+            },
+          }
+        : {}),
+    });
+    setCodeErrors({});
+    addSectionButton.current?.focus();
+  }
+  function renameSection(index: number) {
+    const before = config.sections[index].code;
+    if (blockAmbiguous(before)) return;
+    const supplied = window.prompt(
+      'Nuovo codice locale: la classificazione associata verrà collegata al nuovo codice. Annulla per non modificare nulla.',
+      before,
+    );
+    if (supplied === null) return;
+    const code = supplied.trim();
+    if (
+      !/^[A-Z0-9-]{1,20}$/.test(code) ||
+      config.sections.some((row, i) => i !== index && row.code === code)
+    ) {
+      window.alert(
+        'Usa un codice locale univoco, da 1 a 20 lettere maiuscole, numeri o trattini.',
+      );
+      return;
+    }
+    update({
+      ...config,
+      sections: config.sections.map((row, i) =>
+        i === index ? { ...row, code } : row,
+      ),
+      ...(config.regulatorySections
+        ? {
+            regulatorySections: {
+              ...config.regulatorySections,
+              sections: config.regulatorySections.sections.map((row) =>
+                row.sectionCode === before
+                  ? { ...row, sectionCode: code }
+                  : row,
+              ),
+            },
+          }
+        : {}),
+    });
+    setCodeErrors({});
+  }
   function set<K extends keyof EditionConfiguration>(
     key: K,
     value: EditionConfiguration[K],
@@ -95,6 +243,38 @@ export function EditionForm({
     }
   }
   function section(index: number, change: Partial<SectionConfiguration>) {
+    if (change.code !== undefined) {
+      const code = change.code.trim();
+      if (
+        code &&
+        config.sections.some(
+          (row, i) => i !== index && row.code.trim() === code,
+        )
+      ) {
+        setCodeErrors((previous) => ({
+          ...previous,
+          [index]:
+            'Codice già utilizzato da un’altra sezione. Scegli un codice diverso: la classificazione esistente rimane invariata.',
+        }));
+        return;
+      }
+      setCodeErrors((previous) => {
+        const next = { ...previous };
+        delete next[index];
+        return next;
+      });
+    }
+    if (
+      change.type &&
+      change.type !== config.sections[index].type &&
+      config.regulatorySections?.sections.some(
+        (row) => row.sectionCode === config.sections[index].code,
+      ) &&
+      !window.confirm(
+        'Il tipo di opera cambia, ma la classificazione normativa rimane associata. La compatibilità va verificata manualmente. Continuare?',
+      )
+    )
+      return;
     set(
       'sections',
       config.sections.map((item, i) =>
@@ -104,7 +284,25 @@ export function EditionForm({
   }
   const issues = publicationIssues(config);
   return (
-    <FormFeedback issues={errors}>
+    <FormFeedback
+      issues={[
+        ...errors,
+        ...Object.entries(codeErrors).map(([index, message]) => ({
+          path: `sections.${index}.code`,
+          label: `Sezione ${Number(index) + 1} · Codice sezione`,
+          message,
+        })),
+        ...(mappingError
+          ? [
+              {
+                path: 'regulatorySections',
+                label: 'Classificazione normativa delle sezioni',
+                message: mappingError,
+              },
+            ]
+          : []),
+      ]}
+    >
       <form
         noValidate
         className="edition-form"
@@ -573,168 +771,360 @@ export function EditionForm({
           disabled={readOnly || busy}
         >
           <legend>Sezioni</legend>
-          {config.sections.map((item, index) => (
-            <fieldset key={index}>
-              <legend>Sezione {index + 1}</legend>
-              <Field label="Nome sezione" path={`sections.${index}.name`}>
-                <input
-                  required
-                  minLength={2}
-                  maxLength={120}
-                  value={item.name}
-                  onChange={(e) => section(index, { name: e.target.value })}
-                />
-              </Field>
-              <Field label="Codice sezione" path={`sections.${index}.code`}>
-                <input
-                  required
-                  pattern="[A-Z0-9-]+"
-                  maxLength={20}
-                  value={item.code}
-                  onChange={(e) => section(index, { code: e.target.value })}
-                />
-              </Field>
-              <Field
-                label="Descrizione sezione"
-                path={`sections.${index}.description`}
-              >
-                <textarea
-                  maxLength={5000}
-                  value={item.description}
-                  onChange={(e) =>
-                    section(index, { description: e.target.value })
-                  }
-                />
-              </Field>
-              <Field label="Tema" path={`sections.${index}.theme`}>
-                <input
-                  maxLength={500}
-                  value={item.theme}
-                  onChange={(e) => section(index, { theme: e.target.value })}
-                />
-              </Field>
-              <Field label="Tipo opera" path={`sections.${index}.type`}>
-                <select
-                  value={item.type}
-                  onChange={(e) =>
-                    section(
-                      index,
-                      e.target.value === 'portfolio'
-                        ? { type: 'portfolio', minImages: 2, maxImages: 10 }
-                        : { type: 'single', minImages: 1, maxImages: 1 },
-                    )
-                  }
-                >
-                  <option value="single">Fotografia singola</option>
-                  <option value="portfolio">Portfolio</option>
-                </select>
-              </Field>
-              <Field
-                label="Minimo immagini per opera"
-                path={`sections.${index}.minImages`}
-              >
-                <input
-                  required
-                  type="number"
-                  min={1}
-                  max={100}
-                  step={1}
-                  readOnly={item.type === 'single'}
-                  value={item.minImages}
-                  onChange={(e) =>
-                    section(index, { minImages: e.target.valueAsNumber })
-                  }
-                />
-              </Field>
-              <Field
-                label="Massimo immagini per opera"
-                path={`sections.${index}.maxImages`}
-              >
-                <input
-                  required
-                  type="number"
-                  min={1}
-                  max={100}
-                  step={1}
-                  readOnly={item.type === 'single'}
-                  value={item.maxImages}
-                  onChange={(e) =>
-                    section(index, { maxImages: e.target.valueAsNumber })
-                  }
-                />
-              </Field>
-              <Field
-                label="Quota sezione (centesimi, 0 se gratuita)"
-                path={`sections.${index}.feeCents`}
-              >
-                <input
-                  required
-                  type="number"
-                  min={0}
-                  max={10000000}
-                  step={1}
-                  value={item.feeCents}
-                  onChange={(e) =>
-                    section(index, { feeCents: e.target.valueAsNumber })
-                  }
-                />
-              </Field>
-              <Field
-                label="Regole specifiche"
-                path={`sections.${index}.specificRules`}
-              >
-                <textarea
-                  maxLength={5000}
-                  value={item.specificRules}
-                  onChange={(e) =>
-                    section(index, { specificRules: e.target.value })
-                  }
-                />
-              </Field>
-              <div className="actions">
-                <button
-                  type="button"
-                  disabled={index === 0}
-                  onClick={() => {
-                    const next = [...config.sections];
-                    [next[index - 1], next[index]] = [
-                      next[index],
-                      next[index - 1],
-                    ];
-                    set('sections', next);
-                  }}
-                >
-                  Sposta su
-                </button>
-                <button
-                  type="button"
-                  disabled={index === config.sections.length - 1}
-                  onClick={() => {
-                    const next = [...config.sections];
-                    [next[index + 1], next[index]] = [
-                      next[index],
-                      next[index + 1],
-                    ];
-                    set('sections', next);
-                  }}
-                >
-                  Sposta giù
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    set(
-                      'sections',
-                      config.sections.filter((_, i) => i !== index),
-                    )
-                  }
-                >
-                  Rimuovi sezione
-                </button>
+          {(selectedProfile || config.regulatorySections) && (
+            <Field
+              label="Classificazione normativa delle sezioni"
+              path="regulatorySections"
+              group
+            >
+              <div role="group">
+                <p>
+                  Controlla qui i riferimenti al profilo e i codici locali delle
+                  sezioni. Le associazioni ambigue non possono essere
+                  modificate.
+                </p>
+                {mappingError && <p role="alert">{mappingError}</p>}
               </div>
-            </fieldset>
-          ))}
+            </Field>
+          )}
+          {config.regulatorySections &&
+            config.regulatorySections.profileId !==
+              config.regulatoryProfile?.id && (
+              <p role="alert">
+                La mappatura appartiene a un altro profilo. Scegli di nuovo il
+                profilo per confermarne la rimozione, oppure ripristina il
+                profilo originale.
+              </p>
+            )}
+          {config.sections.map((item, index) => {
+            const mappingIndex =
+              config.regulatorySections?.sections.findIndex(
+                (row) => row.sectionCode === item.code,
+              ) ?? -1;
+            const mapping = config.regulatorySections?.sections.find(
+              (row) => row.sectionCode === item.code,
+            );
+            const mappingPath =
+              mappingIndex < 0 || ambiguous(item.code)
+                ? `regulatorySections.unmapped.${index}`
+                : `regulatorySections.sections.${mappingIndex}`;
+            const canMap =
+              /^[A-Z0-9-]{1,20}$/.test(item.code) &&
+              !ambiguous(item.code) &&
+              (!config.regulatorySections ||
+                config.regulatorySections.profileId ===
+                  config.regulatoryProfile?.id);
+            return (
+              <fieldset key={index}>
+                <legend>Sezione {index + 1}</legend>
+                <Field label="Nome sezione" path={`sections.${index}.name`}>
+                  <input
+                    required
+                    minLength={2}
+                    maxLength={120}
+                    value={item.name}
+                    onChange={(e) => section(index, { name: e.target.value })}
+                  />
+                </Field>
+                <Field label="Codice sezione" path={`sections.${index}.code`}>
+                  <input
+                    required
+                    pattern="[A-Z0-9-]+"
+                    maxLength={20}
+                    value={item.code}
+                    readOnly={Boolean(mapping)}
+                    onInput={(e) =>
+                      section(index, { code: e.currentTarget.value })
+                    }
+                  />
+                </Field>
+                {mapping && (
+                  <button type="button" onClick={() => renameSection(index)}>
+                    Rinomina codice e aggiorna classificazione
+                  </button>
+                )}
+                <Field
+                  label="Descrizione sezione"
+                  path={`sections.${index}.description`}
+                >
+                  <textarea
+                    maxLength={5000}
+                    value={item.description}
+                    onChange={(e) =>
+                      section(index, { description: e.target.value })
+                    }
+                  />
+                </Field>
+                <Field label="Tema" path={`sections.${index}.theme`}>
+                  <input
+                    maxLength={500}
+                    value={item.theme}
+                    onChange={(e) => section(index, { theme: e.target.value })}
+                  />
+                </Field>
+                {selectedProfile?.authority === 'FIAF' &&
+                  selectedProfile.normativeVersion === '2027' && (
+                    <div>
+                      <p>
+                        Classificazione normativa FIAF 2027: il codice locale e
+                        il tema descrittivo restano separati. Non vengono
+                        applicati limiti o impostazioni automaticamente.
+                      </p>
+                      {!canMap && (
+                        <p>
+                          Imposta un codice locale valido e univoco e risolvi
+                          eventuali riferimenti al profilo precedente prima di
+                          classificare.
+                        </p>
+                      )}
+                      <Field
+                        label="Sezione normativa FIAF"
+                        path={`${mappingPath}.sectionType`}
+                      >
+                        <select
+                          disabled={!canMap}
+                          value={mapping?.sectionType ?? ''}
+                          onChange={(e) => {
+                            if (
+                              !e.target.value &&
+                              mapping &&
+                              !window.confirm(
+                                'Rimuovere la classificazione normativa di questa sezione?',
+                              )
+                            )
+                              return;
+                            classification(
+                              item.code,
+                              e.target.value
+                                ? {
+                                    ...mapping,
+                                    sectionCode: item.code,
+                                    sectionType: e.target.value,
+                                  }
+                                : undefined,
+                            );
+                            if (!e.target.value) e.currentTarget.focus();
+                          }}
+                        >
+                          <option value="">Non classificata</option>
+                          {mapping &&
+                            !fiaf2027SectionTypes.some(
+                              (type) => type === mapping.sectionType,
+                            ) && (
+                              <option value={mapping.sectionType}>
+                                Valore storico: {mapping.sectionType}
+                              </option>
+                            )}
+                          <option value="BN">BN — stampe bianconero</option>
+                          <option value="CLP">CLP — stampe colore</option>
+                          <option value="DIG">DIG — file digitali</option>
+                          <option value="PORTFOLIO">
+                            Portfolio — lavoro composto da più fotografie
+                          </option>
+                          <option value="IS">IS — immagini di sintesi</option>
+                        </select>
+                      </Field>
+                      {mapping && (
+                        <>
+                          <Field
+                            label="Codice tema normativo FIAF"
+                            path={`${mappingPath}.themeCode`}
+                          >
+                            <input
+                              disabled={!canMap}
+                              list={`${anchor}-themes-${index}`}
+                              value={mapping.themeCode ?? ''}
+                              onChange={(e) => {
+                                const { themeCode: previous, ...rest } =
+                                  mapping;
+                                void previous;
+                                classification(
+                                  item.code,
+                                  e.target.value
+                                    ? { ...rest, themeCode: e.target.value }
+                                    : rest,
+                                );
+                              }}
+                            />
+                          </Field>
+                          <datalist id={`${anchor}-themes-${index}`}>
+                            {fiaf2027Themes.map(([code, label]) => (
+                              <option key={code} value={code}>
+                                {label}
+                              </option>
+                            ))}
+                          </datalist>
+                          <small>
+                            Facoltativo. Per un tema obbligato usa VR, oppure
+                            VRA, VRB… Il testo del tema rimane nel campo «Tema».
+                          </small>
+                          <Field
+                            label="Categoria normativa FIAF"
+                            path={`${mappingPath}.category`}
+                          >
+                            <select
+                              disabled={!canMap}
+                              value={mapping.category ?? ''}
+                              onChange={(e) => {
+                                const { category: previous, ...rest } = mapping;
+                                void previous;
+                                classification(
+                                  item.code,
+                                  e.target.value
+                                    ? { ...rest, category: e.target.value }
+                                    : rest,
+                                );
+                              }}
+                            >
+                              <option value="">Nessuna categoria</option>
+                              <option
+                                value="TRAD"
+                                disabled={!fiaf2027TradAllowed(mapping)}
+                              >
+                                TRAD — Traditional
+                              </option>
+                              {mapping.category &&
+                                mapping.category !== 'TRAD' && (
+                                  <option value={mapping.category}>
+                                    Valore storico: {mapping.category}
+                                  </option>
+                                )}
+                            </select>
+                          </Field>
+                          {!fiaf2027TradAllowed(mapping) && (
+                            <p>
+                              TRAD non è disponibile per IS, Natura, Wildlife,
+                              Reportage o Viaggio. Un valore già presente resta
+                              visibile: scegli esplicitamente «Nessuna
+                              categoria» oppure correggi la classificazione.
+                            </p>
+                          )}
+                          <small>
+                            Il tipo di opera e le fotografie per opera si
+                            configurano separatamente. BN/CLP descrivono stampe;
+                            questa scelta non aggiunge un flusso di consegna
+                            cartacea. IS non certifica l’origine delle immagini.
+                          </small>
+                        </>
+                      )}
+                    </div>
+                  )}
+                <Field label="Tipo opera" path={`sections.${index}.type`}>
+                  <select
+                    value={item.type}
+                    onChange={(e) =>
+                      section(
+                        index,
+                        e.target.value === 'portfolio'
+                          ? { type: 'portfolio', minImages: 2, maxImages: 10 }
+                          : { type: 'single', minImages: 1, maxImages: 1 },
+                      )
+                    }
+                  >
+                    <option value="single">Fotografia singola</option>
+                    <option value="portfolio">Portfolio</option>
+                  </select>
+                </Field>
+                <Field
+                  label="Minimo immagini per opera"
+                  path={`sections.${index}.minImages`}
+                >
+                  <input
+                    required
+                    type="number"
+                    min={1}
+                    max={100}
+                    step={1}
+                    readOnly={item.type === 'single'}
+                    value={item.minImages}
+                    onChange={(e) =>
+                      section(index, { minImages: e.target.valueAsNumber })
+                    }
+                  />
+                </Field>
+                <Field
+                  label="Massimo immagini per opera"
+                  path={`sections.${index}.maxImages`}
+                >
+                  <input
+                    required
+                    type="number"
+                    min={1}
+                    max={100}
+                    step={1}
+                    readOnly={item.type === 'single'}
+                    value={item.maxImages}
+                    onChange={(e) =>
+                      section(index, { maxImages: e.target.valueAsNumber })
+                    }
+                  />
+                </Field>
+                <Field
+                  label="Quota sezione (centesimi, 0 se gratuita)"
+                  path={`sections.${index}.feeCents`}
+                >
+                  <input
+                    required
+                    type="number"
+                    min={0}
+                    max={10000000}
+                    step={1}
+                    value={item.feeCents}
+                    onChange={(e) =>
+                      section(index, { feeCents: e.target.valueAsNumber })
+                    }
+                  />
+                </Field>
+                <Field
+                  label="Regole specifiche"
+                  path={`sections.${index}.specificRules`}
+                >
+                  <textarea
+                    maxLength={5000}
+                    value={item.specificRules}
+                    onChange={(e) =>
+                      section(index, { specificRules: e.target.value })
+                    }
+                  />
+                </Field>
+                <div className="actions">
+                  <button
+                    type="button"
+                    disabled={index === 0}
+                    onClick={() => {
+                      const next = [...config.sections];
+                      [next[index - 1], next[index]] = [
+                        next[index],
+                        next[index - 1],
+                      ];
+                      set('sections', next);
+                    }}
+                  >
+                    Sposta su
+                  </button>
+                  <button
+                    type="button"
+                    disabled={index === config.sections.length - 1}
+                    onClick={() => {
+                      const next = [...config.sections];
+                      [next[index + 1], next[index]] = [
+                        next[index],
+                        next[index + 1],
+                      ];
+                      set('sections', next);
+                    }}
+                  >
+                    Sposta giù
+                  </button>
+                  <button type="button" onClick={() => removeSection(index)}>
+                    Rimuovi sezione
+                  </button>
+                </div>
+              </fieldset>
+            );
+          })}
           <button
+            ref={addSectionButton}
             type="button"
             disabled={config.sections.length >= 100}
             onClick={() =>

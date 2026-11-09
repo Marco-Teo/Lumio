@@ -11,6 +11,7 @@ const labels: Record<string, string> = {
   description: 'Descrizione',
   identifier: 'Anno o identificatore',
   regulatoryProfile: 'Tipo di configurazione',
+  regulatorySections: 'Classificazione normativa delle sezioni',
   opensAt: 'Apertura iscrizioni',
   closesAt: 'Chiusura iscrizioni',
   juryAt: 'Data giuria',
@@ -44,7 +45,10 @@ export function competitionFormIssues(
     .map((issue) => {
       const parts =
         issue.path[0] === 'configuration' ? issue.path.slice(1) : issue.path;
-      const path = parts.join('.');
+      const path =
+        parts[0] === 'regulatorySections' && parts.length <= 3
+          ? 'regulatorySections'
+          : parts.join('.');
       const section = parts[0] === 'sections' && typeof parts[1] === 'number';
       const field = String(parts.at(-1) ?? '');
       const label = section
@@ -53,7 +57,9 @@ export function competitionFormIssues(
           ? `Nome ${kind === 'contest' ? 'concorso' : 'edizione'}`
           : field === 'slug'
             ? `Slug ${kind === 'contest' ? 'concorso' : 'edizione'}`
-            : (labels[path] ?? 'Dati del modulo');
+            : parts[0] === 'regulatorySections'
+              ? labels.regulatorySections
+              : (labels[path] ?? 'Dati del modulo');
       let message = 'Controlla il valore inserito.';
       if (issue.code === 'custom') message = issue.message;
       else if (field === 'slug')
