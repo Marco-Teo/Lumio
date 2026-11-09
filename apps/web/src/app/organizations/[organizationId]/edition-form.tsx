@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useRef, useState } from 'react';
+import { FiafPreview } from '../fiaf-preview';
 import {
   fiaf2027SectionTypes,
   fiaf2027Themes,
@@ -353,6 +354,9 @@ export function EditionForm({
             ['documents', 'Documenti'],
             ['images', 'Regole immagini'],
             ['fees', 'Quote e voto'],
+            ...(selectedProfile?.normativeVersion === '2027'
+              ? [['fiaf-preview', 'Verifica FIAF']]
+              : []),
           ].map(([key, label]) => (
             <a
               key={key}
@@ -465,8 +469,8 @@ export function EditionForm({
                 automaticamente la conformità del concorso.
               </p>
               <p>
-                Configurazione FIAF selezionata — verifiche normative non ancora
-                disponibili
+                Configurazione FIAF selezionata — verifiche normative complete
+                non disponibili
               </p>
               {selectedProfile ? (
                 <>
@@ -618,90 +622,94 @@ export function EditionForm({
             Configurazione per i futuri caricamenti; in questa fase non vengono
             ancora caricate o elaborate fotografie.
           </p>
-          <Field label="Formati immagini" path="imageRules.formats" group>
-            <div className="format-options" role="group">
-              {(['jpeg', 'png', 'tiff'] as const).map((format) => (
-                <label key={format}>
+          <Field label="Limiti e formati immagini" path="imageRules" group>
+            <div role="group" style={{ display: 'grid', gap: 21 }}>
+              <Field label="Formati immagini" path="imageRules.formats" group>
+                <div className="format-options" role="group">
+                  {(['jpeg', 'png', 'tiff'] as const).map((format) => (
+                    <label key={format}>
+                      <input
+                        type="checkbox"
+                        checked={config.imageRules.formats.includes(format)}
+                        onChange={(e) =>
+                          set('imageRules', {
+                            ...config.imageRules,
+                            formats: e.target.checked
+                              ? [...config.imageRules.formats, format]
+                              : config.imageRules.formats.filter(
+                                  (item) => item !== format,
+                                ),
+                          })
+                        }
+                      />
+                      {format.toUpperCase()}
+                    </label>
+                  ))}
+                </div>
+              </Field>
+              <Field
+                label="Dimensione massima file (MiB)"
+                path="imageRules.maxBytes"
+              >
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  required
+                  value={photoLimitInput}
+                  onChange={(e) => {
+                    setPhotoLimitInput(e.target.value);
+                    set('imageRules', {
+                      ...config.imageRules,
+                      maxBytes: photoBytesFromMiB(e.target.value) ?? NaN,
+                    });
+                  }}
+                />
+              </Field>
+              <small>
+                Massimo {photoSizeLabel(maxPhotoBytes)}. I valori personalizzati
+                devono corrispondere a un numero intero di byte e non vengono
+                arrotondati.
+              </small>
+              {(
+                [
+                  ['minWidth', 'Larghezza minima (px)'],
+                  ['minHeight', 'Altezza minima (px)'],
+                  ['maxLongEdge', 'Lato lungo massimo (px)'],
+                  ['maxShortEdge', 'Lato corto massimo (px)'],
+                ] as const
+              ).map(([key, label]) => (
+                <Field key={key} label={label} path={`imageRules.${key}`}>
                   <input
-                    type="checkbox"
-                    checked={config.imageRules.formats.includes(format)}
+                    type="number"
+                    min={1}
+                    max={100000}
+                    step={1}
+                    placeholder="Nessun limite"
+                    value={config.imageRules[key] ?? ''}
                     onChange={(e) =>
                       set('imageRules', {
                         ...config.imageRules,
-                        formats: e.target.checked
-                          ? [...config.imageRules.formats, format]
-                          : config.imageRules.formats.filter(
-                              (item) => item !== format,
-                            ),
+                        [key]: e.target.value ? e.target.valueAsNumber : null,
                       })
                     }
                   />
-                  {format.toUpperCase()}
-                </label>
+                </Field>
               ))}
+              <Field label="Profilo colore" path="imageRules.colorProfile">
+                <select
+                  value={config.imageRules.colorProfile}
+                  onChange={(e) =>
+                    set('imageRules', {
+                      ...config.imageRules,
+                      colorProfile: e.target.value === 'srgb' ? 'srgb' : 'any',
+                    })
+                  }
+                >
+                  <option value="any">Qualsiasi</option>
+                  <option value="srgb">sRGB</option>
+                </select>
+              </Field>
             </div>
-          </Field>
-          <Field
-            label="Dimensione massima file (MiB)"
-            path="imageRules.maxBytes"
-          >
-            <input
-              type="text"
-              inputMode="decimal"
-              required
-              value={photoLimitInput}
-              onChange={(e) => {
-                setPhotoLimitInput(e.target.value);
-                set('imageRules', {
-                  ...config.imageRules,
-                  maxBytes: photoBytesFromMiB(e.target.value) ?? NaN,
-                });
-              }}
-            />
-          </Field>
-          <small>
-            Massimo {photoSizeLabel(maxPhotoBytes)}. I valori personalizzati
-            devono corrispondere a un numero intero di byte e non vengono
-            arrotondati.
-          </small>
-          {(
-            [
-              ['minWidth', 'Larghezza minima (px)'],
-              ['minHeight', 'Altezza minima (px)'],
-              ['maxLongEdge', 'Lato lungo massimo (px)'],
-              ['maxShortEdge', 'Lato corto massimo (px)'],
-            ] as const
-          ).map(([key, label]) => (
-            <Field key={key} label={label} path={`imageRules.${key}`}>
-              <input
-                type="number"
-                min={1}
-                max={100000}
-                step={1}
-                placeholder="Nessun limite"
-                value={config.imageRules[key] ?? ''}
-                onChange={(e) =>
-                  set('imageRules', {
-                    ...config.imageRules,
-                    [key]: e.target.value ? e.target.valueAsNumber : null,
-                  })
-                }
-              />
-            </Field>
-          ))}
-          <Field label="Profilo colore" path="imageRules.colorProfile">
-            <select
-              value={config.imageRules.colorProfile}
-              onChange={(e) =>
-                set('imageRules', {
-                  ...config.imageRules,
-                  colorProfile: e.target.value === 'srgb' ? 'srgb' : 'any',
-                })
-              }
-            >
-              <option value="any">Qualsiasi</option>
-              <option value="srgb">sRGB</option>
-            </select>
           </Field>
         </fieldset>
         <fieldset
@@ -1147,6 +1155,11 @@ export function EditionForm({
             Aggiungi sezione
           </button>
         </fieldset>
+        <FiafPreview
+          config={config}
+          readOnly={readOnly}
+          id={`${anchor}-fiaf-preview`}
+        />
         {!readOnly && issues.length > 0 && (
           <aside>
             <p>Prima della pubblicazione:</p>

@@ -345,7 +345,7 @@ test('organizer configures, versions, publishes and archives an edition', async 
         await expect(
           page
             .getByText(
-              'Configurazione FIAF selezionata — verifiche normative non ancora disponibili',
+              'Configurazione FIAF selezionata — verifiche normative complete non disponibili',
               { exact: true },
             )
             .last(),
@@ -541,6 +541,16 @@ test('organizer configures, versions, publishes and archives an edition', async 
       .getByRole('button', { name: 'Visualizza configurazione' })
       .click();
     await expect(page.getByLabel('Nome edizione')).toBeDisabled();
+    const publishedPreview = page.getByRole('region', {
+      name: 'Verifica guidata FIAF 2027',
+      exact: true,
+    });
+    await expect(publishedPreview).toContainText(
+      'configurazione salvata, senza modificarla',
+    );
+    await expect(
+      publishedPreview.getByRole('link', { name: 'Vai al campo interessato' }),
+    ).toHaveCount(0);
     await expect(
       page.getByLabel('Tipo di configurazione', { exact: true }),
     ).toBeDisabled();
@@ -582,9 +592,17 @@ test('organizer configures, versions, publishes and archives an edition', async 
       await page
         .getByRole('button', { name: 'Nuova edizione', exact: true })
         .click();
+      const preview = page.getByRole('region', {
+        name: 'Verifica guidata FIAF 2027',
+        exact: true,
+      });
+      await expect(preview).toHaveCount(0);
       await page
         .getByLabel('Tipo di configurazione', { exact: true })
         .selectOption(id);
+      await expect(preview).toBeVisible();
+      await expect(preview).toContainText('modifiche locali non salvate');
+      await expect(preview).toContainText('Da configurare');
       await expect(
         page.getByRole('group', {
           name: 'Conferma cambio configurazione',
@@ -698,6 +716,108 @@ test('organizer configures, versions, publishes and archives an edition', async 
           'Testo libero dell’organizzatore',
         );
       }
+      const portfolioGroup = page.getByRole('group', {
+        name: 'Sezione 2',
+        exact: true,
+      });
+      const portfolioResult = preview.getByRole('article', {
+        name: 'Intervallo immagini per Portfolio — Classificata PORTFOLIO',
+        exact: true,
+      });
+      const portfolioSummary = preview
+        .locator('summary')
+        .filter({ hasText: /^Classificata PORTFOLIO \(OWN-2\)/ });
+      await expect(preview.getByLabel('Conteggi complessivi')).toContainText(
+        'Da correggere:',
+      );
+      await expect(portfolioResult).toHaveCount(0);
+      await portfolioSummary.focus();
+      await page.keyboard.press('Enter');
+      for (const count of [7, 8, 12, 13]) {
+        await portfolioGroup
+          .getByLabel('Minimo immagini per opera')
+          .fill(String(count));
+        await portfolioGroup
+          .getByLabel('Massimo immagini per opera')
+          .fill(String(count));
+        await expect(portfolioResult).toContainText(
+          count >= 8 && count <= 12 ? 'Soddisfatto' : 'Da correggere',
+        );
+        await expect(portfolioSummary).toContainText(
+          `Da correggere: ${count >= 8 && count <= 12 ? 0 : 1}`,
+        );
+      }
+      await portfolioGroup.getByLabel('Minimo immagini per opera').fill('8');
+      await portfolioResult
+        .getByRole('link', { name: 'Vai al campo interessato' })
+        .focus();
+      await page.keyboard.press('Enter');
+      await expect(
+        portfolioGroup.getByLabel('Massimo immagini per opera'),
+      ).toBeFocused();
+      await portfolioGroup.getByLabel('Minimo immagini per opera').fill('7');
+      await portfolioGroup.getByLabel('Massimo immagini per opera').fill('12');
+      await portfolioResult
+        .getByRole('link', { name: 'Vai al campo interessato' })
+        .click();
+      await expect(
+        portfolioGroup.getByLabel('Minimo immagini per opera'),
+      ).toBeFocused();
+      if (index === 0) {
+        await preview
+          .locator('summary')
+          .filter({ hasText: /^Classificata DIG \(OWN-1\)/ })
+          .click();
+        const dimensionResult = preview.getByRole('article', {
+          name: 'Lato maggiore esatto — Classificata DIG',
+          exact: true,
+        });
+        for (const [label, value] of [
+          ['Larghezza minima (px)', '3000'],
+          ['Altezza minima (px)', '3000'],
+          ['Lato lungo massimo (px)', '2000'],
+        ] as const) {
+          await page.getByLabel(label, { exact: true }).fill(value);
+          await dimensionResult
+            .getByRole('link', { name: 'Vai al campo interessato' })
+            .click();
+          await expect(page.getByLabel(label, { exact: true })).toBeFocused();
+          await page.getByLabel(label, { exact: true }).fill('');
+        }
+        await page
+          .getByLabel('Larghezza minima (px)', { exact: true })
+          .fill('3000');
+        await page
+          .getByLabel('Altezza minima (px)', { exact: true })
+          .fill('3000');
+        await dimensionResult
+          .getByRole('link', { name: 'Vai al campo interessato' })
+          .click();
+        await expect(
+          page.getByRole('group', {
+            name: 'Limiti e formati immagini',
+            exact: true,
+          }),
+        ).toBeFocused();
+        await page
+          .getByLabel('Larghezza minima (px)', { exact: true })
+          .fill('');
+        await page.getByLabel('Altezza minima (px)', { exact: true }).fill('');
+      }
+      // Restore the existing draft values; preview warnings must not block saving.
+      await portfolioGroup.getByLabel('Minimo immagini per opera').fill('2');
+      await portfolioGroup.getByLabel('Massimo immagini per opera').fill('10');
+      await expect(portfolioResult).toContainText('Da correggere');
+      await preview.getByText(/^Verifiche manuali e questioni aperte/).click();
+      await expect(preview).toContainText('Da verificare manualmente');
+      await expect(
+        preview.getByRole('link', { name: /§ 1\.5\.6/ }).first(),
+      ).toBeVisible();
+      const formatResults = preview.getByRole('article', {
+        name: 'Impostazioni JPEG/sRGB per DIG — Classificata DIG',
+        exact: true,
+      });
+      await expect(formatResults).toHaveCount(index === 0 ? 1 : 0);
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -718,6 +838,9 @@ test('organizer configures, versions, publishes and archives an edition', async 
       await row
         .getByRole('button', { name: 'Configura edizione', exact: true })
         .click();
+      await expect(preview).toBeVisible();
+      await portfolioSummary.click();
+      await expect(portfolioResult).toContainText('Da correggere');
       await expect(
         page.getByLabel('Tipo di configurazione', { exact: true }),
       ).toHaveValue(id);
@@ -737,6 +860,93 @@ test('organizer configures, versions, publishes and archives an edition', async 
       const firstRevision = await owner.editionRevision.findFirstOrThrow({
         where: { editionId: savedMapping.id, version: 1 },
       });
+      if (index === 0) {
+        // Large preview fixture is confined to the browser response: no stored data changes.
+        const large = editionSchema.parse(firstRevision.configuration);
+        const template = large.sections[0];
+        large.sections = Array.from({ length: 100 }, (_, i) => ({
+          ...template,
+          name: `Ampia ${i}`,
+          code: `A${i}`,
+        }));
+        large.regulatorySections = {
+          profileId: id,
+          sections: large.sections.map((section) => ({
+            sectionCode: section.code,
+            sectionType: 'DIG',
+            themeCode: 'LB',
+          })),
+        };
+        const listUrl = `**/api/v1/organizations/${organizationId}/contests`;
+        await page.route(
+          listUrl,
+          async (route) => {
+            const response = await route.fetch();
+            const data = (await response.json()) as {
+              contests: Array<{
+                editions: Array<{
+                  id: string;
+                  revisions: Array<{ configuration: unknown }>;
+                }>;
+              }>;
+            };
+            data.contests
+              .flatMap((contest) => contest.editions)
+              .find(
+                (edition) => edition.id === savedMapping.id,
+              )!.revisions[0].configuration = large;
+            await route.fulfill({ response, json: data });
+          },
+          { times: 1 },
+        );
+        await page.reload();
+        await row
+          .getByRole('button', { name: 'Configura edizione', exact: true })
+          .click();
+        for (const width of [320, 390]) {
+          await page.setViewportSize({ width, height: 844 });
+          await expect(
+            preview
+              .locator('summary')
+              .filter({ hasText: /^Ampia \d+ \(A\d+\)/ }),
+          ).toHaveCount(100);
+          await expect(preview.getByRole('article')).toHaveCount(0);
+          await expect(
+            preview.getByLabel('Conteggi complessivi'),
+          ).toBeVisible();
+          await expect(
+            preview.getByLabel('Conteggi complessivi'),
+          ).toContainText('Soddisfatto: 100');
+          await expect(
+            preview.getByLabel('Conteggi complessivi'),
+          ).toContainText('Da correggere: 100');
+          expect(
+            await page.evaluate(
+              () => document.documentElement.scrollWidth <= window.innerWidth,
+            ),
+          ).toBe(true);
+        }
+        const corrections = preview.getByRole('navigation', {
+          name: 'Sezioni da correggere',
+        });
+        await corrections.locator('summary').focus();
+        await page.keyboard.press('Space');
+        await corrections
+          .getByRole('link', { name: /^Ampia 99 \(A99\):/ })
+          .click();
+        const lastSummary = preview
+          .locator('summary')
+          .filter({ hasText: /^Ampia 99 \(A99\)/ });
+        await expect(lastSummary).toBeFocused();
+        await expect(preview.getByRole('article')).toHaveCount(3);
+        await page.keyboard.press('Enter');
+        await expect(preview.getByRole('article')).toHaveCount(0);
+        await page.reload();
+        await row
+          .getByRole('button', { name: 'Configura edizione', exact: true })
+          .click();
+        await portfolioSummary.click();
+      }
       for (const theme of ['NA', 'NW', 'RP', 'TR']) {
         await firstGroup.getByLabel('Codice tema normativo FIAF').fill(theme);
         await expect(

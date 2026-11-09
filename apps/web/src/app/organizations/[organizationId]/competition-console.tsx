@@ -340,8 +340,8 @@ export function CompetitionConsole({
                 {editionSchema.parse(edition.revisions[0].configuration)
                   .regulatoryProfile && (
                   <p>
-                    Configurazione FIAF selezionata — verifiche normative non
-                    ancora disponibili
+                    Configurazione FIAF selezionata — verifiche normative
+                    complete non disponibili
                   </p>
                 )}
                 {editionNotice?.id === edition.id && (

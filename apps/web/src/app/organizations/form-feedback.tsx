@@ -100,3 +100,28 @@ export function FormErrorSummary() {
     </div>
   );
 }
+
+/** Uses the same generated IDs as fields, including focusable field groups. */
+export function FormFieldLink({
+  path,
+  children,
+}: {
+  path: string;
+  children: ReactNode;
+}) {
+  const { prefix } = useContext(FeedbackContext);
+  const id = fieldId(prefix, path);
+  return (
+    <a
+      href={`#${id}`}
+      onClick={(event) => {
+        event.preventDefault();
+        const field = document.getElementById(id);
+        field?.focus();
+        field?.scrollIntoView({ block: 'center', behavior: 'instant' });
+      }}
+    >
+      {children}
+    </a>
+  );
+}
