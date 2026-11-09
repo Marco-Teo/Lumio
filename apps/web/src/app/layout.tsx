@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import './globals.css';
 import { AppHeader } from './components/app-header';
+import { AppFooter } from './components/app-footer';
 
 export const metadata: Metadata = {
   title: 'Lumio',
@@ -19,9 +20,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <div id="main-content" tabIndex={-1}>
           {children}
         </div>
-        <footer className="app-footer">
-          Lumio <span>·</span> Concorsi fotografici
-        </footer>
+        <AppFooter />
       </body>
     </html>
   );
