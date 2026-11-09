@@ -46,6 +46,9 @@ it('opens at the opening instant and closes at the closing instant', () => {
   expect(registrationOpen(config, Date.parse(config.closesAt))).toBe(false);
 });
 it('preserves only allowlisted internal login destinations', () => {
+  expect(safeReturnTo(null)).toBe('/');
+  for (const path of ['/', '/account', '/invitations', '/registrations'])
+    expect(safeReturnTo(path)).toBe(path);
   expect(
     safeReturnTo('/editions/11111111-1111-4111-8111-111111111111'),
   ).toContain('/editions/');
@@ -55,5 +58,5 @@ it('preserves only allowlisted internal login destinations', () => {
     '/editions/../platform',
     '/api/profile',
   ])
-    expect(safeReturnTo(path)).toBe('/account');
+    expect(safeReturnTo(path)).toBe('/');
 });

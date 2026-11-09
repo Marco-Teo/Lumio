@@ -45,7 +45,7 @@ export function AuthForm({
             result.data &&
               'twoFactorRedirect' in result.data &&
               result.data.twoFactorRedirect
-              ? destination === '/account'
+              ? destination === '/'
                 ? '/two-factor'
                 : `/two-factor?returnTo=${encodeURIComponent(destination)}`
               : destination,

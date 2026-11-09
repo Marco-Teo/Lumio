@@ -2,6 +2,7 @@ export function safeReturnTo(value: string | null) {
   if (
     value &&
     ([
+      '/',
       '/account',
       '/platform',
       '/invitations',
@@ -15,5 +16,5 @@ export function safeReturnTo(value: string | null) {
       ))
   )
     return value;
-  return '/account';
+  return '/';
 }

@@ -34,7 +34,8 @@ test('registration, verification, reset, revocation and MFA', async ({
     await page.getByLabel('Email', { exact: true }).fill(email);
     await page.getByLabel('Password', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Continua' }).click();
-    await expect(page).toHaveURL(/\/account$/);
+    await expect(page).toHaveURL('/');
+    await page.goto('/account');
     await expect(page.getByText(email, { exact: true })).toBeVisible();
     const session = await page.context().request.get('/api/auth/get-session');
     const sessionData = (await session.json()) as { user: { id: string } };
@@ -81,7 +82,8 @@ test('registration, verification, reset, revocation and MFA', async ({
     await page.getByLabel('Email', { exact: true }).fill(email);
     await page.getByLabel('Password', { exact: true }).fill(newPassword);
     await page.getByRole('button', { name: 'Continua' }).click();
-    await expect(page).toHaveURL(/\/account$/);
+    await expect(page).toHaveURL('/');
+    await page.goto('/account');
     await page.getByLabel('Conferma password').fill(newPassword);
     await page.getByRole('button', { name: 'Configura autenticatore' }).click();
     const uri = await page.locator('.secret-uri').innerText();
@@ -91,16 +93,18 @@ test('registration, verification, reset, revocation and MFA', async ({
     await expect(page.getByRole('status')).toContainText('attivata');
     await page.getByRole('button', { name: 'Esci', exact: true }).click();
     await expect(page).toHaveURL(/\/login$/);
+    await page.goto('/login?returnTo=/registrations');
     await page.getByLabel('Email', { exact: true }).fill(email);
     await page.getByLabel('Password', { exact: true }).fill(newPassword);
     await page.getByRole('button', { name: 'Continua' }).click();
-    await expect(page).toHaveURL(/\/two-factor$/);
+    await expect(page).toHaveURL(/\/two-factor\?returnTo=%2Fregistrations$/);
     expect(
       await (await page.context().request.get('/api/auth/get-session')).json(),
     ).toBeNull();
     await page.getByLabel('Codice autenticatore').fill(totp(uri));
     await page.getByRole('button', { name: 'Continua' }).click();
-    await expect(page).toHaveURL(/\/account$/);
+    await expect(page).toHaveURL('/registrations');
+    await page.goto('/account');
     expect(
       (
         await page
@@ -117,7 +121,8 @@ test('registration, verification, reset, revocation and MFA', async ({
     await page.getByRole('button', { name: 'Usa codice di recupero' }).click();
     await page.getByLabel('Codice di recupero').fill(backupCode);
     await page.getByRole('button', { name: 'Continua' }).click();
-    await expect(page).toHaveURL(/\/account$/);
+    await expect(page).toHaveURL('/');
+    await page.goto('/account');
     const reused = await page
       .context()
       .request.post('/api/auth/two-factor/verify-backup-code', {
