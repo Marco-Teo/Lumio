@@ -2,6 +2,18 @@
 
 Questo registro descrive il lavoro fino a F3 locale e gli incrementi FIAF 2027. Le funzionalità future sono indicate separatamente.
 
+## Anonimato giuria — B1 isolato
+
+Aggiunto un generatore non integrato di PNG sRGB a risoluzione originale, con
+orientamento applicato, conservazione della profondità a 16 bit quando supportata
+e rifiuto esplicito di input non gestibili. Nessun accesso giuria, endpoint,
+collegamento a worker/storage/database o cambiamento agli originali e alle policy
+FIAF. Test per metadati, pixel, precisione, formati e limiti; benchmark sintetico
+riproducibile e misure documentate in [ANONYMITY.md](ANONYMITY.md).
+La revisione corregge la trasformazione non necessaria dei campioni RGB16 senza
+ICC e aggiunge regressioni per fedeltà dei campioni, tutti gli orientamenti,
+chunk testuali PNG e rifiuto dei profili ICC corrotti.
+
 ## Anonimato giuria — Fase A
 
 Riutilizzato il codice anonimo stabile già presente per ogni opera. Aggiunti

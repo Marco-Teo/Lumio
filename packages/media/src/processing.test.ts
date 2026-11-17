@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import sharp from 'sharp';
+import { createJuryImage } from './jury-image';
 import { processPhoto, originalFormat, type ImageRules } from './processing';
 const rules: ImageRules = {
   formats: ['jpeg', 'png', 'tiff'],
@@ -144,6 +145,13 @@ it('removes EXIF/GPS, IPTC, XMP and ICC from previews while preserving the exact
   expect(before.xmp!.includes(Buffer.from('Synthetic identity'))).toBe(true);
   expect(before.icc).toBeDefined();
   const copy = Buffer.from(original);
+  const jury = await createJuryImage(original);
+  const juryMetadata = await sharp(jury.png).metadata();
+  expect(juryMetadata.exif).toBeUndefined();
+  expect(juryMetadata.icc).toBeUndefined();
+  expect(juryMetadata.iptc).toBeUndefined();
+  expect(juryMetadata.xmp).toBeUndefined();
+  expect(jury.png.includes(author)).toBe(false);
   const result = await processPhoto(original, rules);
   const metadata = await sharp(result.preview).metadata();
   expect(metadata.format).toBe('webp');

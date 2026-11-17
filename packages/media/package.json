@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./jury-image": "./src/jury-image.ts",
     "./storage": "./src/storage.ts",
     "./processing": "./src/processing.ts",
     "./limits": "./src/limits.ts",
