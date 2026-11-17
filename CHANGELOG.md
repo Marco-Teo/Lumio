@@ -1,6 +1,29 @@
 # Stato di avanzamento Lumio
 
-Questo registro descrive il lavoro fino a F2. Le funzionalità future sono indicate separatamente.
+Questo registro descrive il lavoro fino a F3 locale e gli incrementi FIAF 2027. Le funzionalità future sono indicate separatamente.
+
+## FIAF 2027 — catalogo, configurazione e controlli di pubblicazione
+
+I commit `03a50da`, `cd9fa88`, `45a6e96` e `1d1bf3a` introducono catalogo immutabile
+versionato, scelta e persistenza del profilo, classificazione di sezioni/temi/TRAD
+e anteprima informativa con focus, conteggi e gruppi richiudibili anche con 100 sezioni.
+
+Il completamento del 17 novembre 2026 aggiunge controlli condivisi frontend/server
+prima della pubblicazione: classificazione completa, tipo/intervallo Portfolio e
+policy DIG applicabile al profilo. Le bozze restano salvabili incomplete, comprese
+quelle precedenti. Nessun automatismo, migrazione o riscrittura di edizioni pubblicate
+e snapshot. Non sono stati implementati anonimizzazione fotografica, giuria o voto.
+Ambito e verifiche ancora manuali sono descritti in [FIAF-2027.md](FIAF-2027.md).
+
+Verifiche locali del completamento: lint, `pnpm format`, formatting check,
+typecheck, 177 test unitari, 55 integrazioni, 10 E2E e build eseguiti con successo.
+Il test E2E organizzatore è stato rieseguito sulla politica finale, inclusa la
+distinzione dei temi della Raccomandazione. Solo servizi locali e dati sintetici;
+nessuna rigenerazione delle credenziali.
+
+Next.js 16.4.2 ha segnalato una vulnerabilità nota e interrotto il primo avvio
+dei comandi di build; le ripetizioni sono riuscite conservando l'avviso.
+L'aggiornamento di sicurezza resta aperto e non è stato mescolato all'intervento FIAF.
 
 ## F0.1 — Repository eseguibile e controlli automatici
 

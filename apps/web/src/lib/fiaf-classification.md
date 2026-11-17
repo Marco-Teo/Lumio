@@ -60,3 +60,12 @@ Raccomandazione. La discordanza fra tabella NW e titolo NAW va tenuta presente
 nelle future esportazioni. Il rinvio a Creatività della tabella (§4.8) differisce
 dal titolo del §4.7: questo incremento non lo trasforma in una validazione.
 La selezione del profilo non concede riconoscimenti o conformità FIAF.
+
+## Completamento: controlli prima della pubblicazione
+
+`fiaf-publication.ts` richiede una classificazione esplicita completa per poter
+stabilire l'applicabilità dei controlli supportati. Per le sezioni classificate
+Portfolio controlla tipo opera e intervallo immagini; non sceglie automaticamente
+il tipo Lumio e non limita le opere per autore. Le bozze incomplete restano salvabili
+entro i controlli strutturali già presenti. Nessun aggiornamento automatico delle
+classificazioni storiche. Il modello resta parziale: [copertura](../../../../FIAF-2027.md).

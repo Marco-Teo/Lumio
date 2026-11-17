@@ -3,7 +3,13 @@
 Implementata come funzione pura `previewFiafEdition(configuration)` e riepilogo
 nel modulo organizzatore. Profilo e mappatura provengono dalla configurazione
 corrente, incluse le modifiche locali. Gli esiti non sono persistiti, non applicano
-valori e non intervengono su scrittura, pubblicazione o caricamenti.
+valori e non intervengono sui salvataggi delle bozze o sui caricamenti.
+Dal completamento successivo al quarto incremento, `fiaf-publication.ts` usa una
+lista esplicita di questi risultati per i controlli prima della pubblicazione:
+classificazione completa, intervallo/tipo Portfolio e policy JPEG/sRGB DIG associata
+al profilo. La checklist e il server condividono `publicationIssues`. Non vengono
+convertiti indiscriminatamente tutti gli avvisi in blocchi, soprattutto dimensioni,
+deroghe e questioni aperte. Sono incluse le bozze esistenti, non le edizioni pubblicate.
 
 La risoluzione del profilo usa un ID esatto. Nessun fallback a versioni nuove:
 l'assenza del profilo è indipendente; ID sconosciuti o versioni non supportate

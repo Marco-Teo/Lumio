@@ -3,12 +3,13 @@
 Il punto di ingresso è `index.ts`: espone il registro congelato e due lookup per
 identificativo esatto. Non esiste selezione automatica dell'ultima versione,
 applicazione di preset, validazione di edizioni o attribuzione di conformità.
-Il catalogo è parziale e riguarda il primo incremento FIAF; non sostituisce la fonte.
+Il catalogo è parziale e nasce dal primo incremento FIAF; non sostituisce la fonte.
 
 `types.ts` definisce le categorie; `fiaf-2027.ts` contiene soltanto dati e riferimenti
 verificati sul documento definitivo. I numeri di pagina sono quelli stampati.
-`automatic-candidate` significa verificabile in una futura integrazione, non che
-Lumio esegua già il controllo. Per esempio la separazione delle sezioni è un controllo
+`automatic-candidate` è un descrittore, non una validazione eseguibile. Il valutatore
+`fiaf-preview.ts` e la policy `fiaf-publication.ts` ora implementano un sottoinsieme
+esplicito dei controlli. Per esempio la separazione delle sezioni è un controllo
 di configurazione, non un rilevatore della provenienza sintetica di un'immagine.
 
 I parametri non includono valori predefiniti o intervalli dedotti. Le condizioni
@@ -33,5 +34,9 @@ Non introdurre fallback da 2027 a 2028 e non aggiornare snapshot o edizioni esis
 
 Il catalogo è ora usato dal modulo organizzatore e dagli schemi dell’edizione per
 la selezione, la persistenza dell’ID e la validazione della sua presenza nel catalogo.
-Le regole FIAF non sono ancora applicate automaticamente: il profilo non certifica
-la conformità del concorso e non concede Patrocinio o Raccomandazione.
+Nessuna impostazione FIAF viene applicata automaticamente. La pubblicazione usa
+controlli espliciti per classificazione, Portfolio e policy DIG quando applicabili;
+il salvataggio delle bozze non richiede il loro completamento. Il profilo non
+certifica la conformità del concorso e non concede Patrocinio o Raccomandazione.
+I dati e gli ID del catalogo restano immutati; `status: catalog-only` descrive
+la versione originaria del catalogo, non l'assenza delle integrazioni applicative.

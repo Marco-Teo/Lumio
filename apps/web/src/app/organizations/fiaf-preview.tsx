@@ -125,8 +125,11 @@ export function FiafPreview({
         {readOnly
           ? 'Anteprima della configurazione salvata, senza modificarla.'
           : 'Anteprima dei dati presenti nel modulo, incluse eventuali modifiche locali non salvate. Per conservarle usa Salva bozza.'}{' '}
-        Gli esiti non vengono salvati e non bloccano salvataggio o
-        pubblicazione.
+        Gli esiti non vengono salvati. Le bozze possono essere salvate
+        incomplete. Prima della pubblicazione vengono controllati
+        classificazione, intervallo Portfolio e impostazioni JPEG/sRGB DIG
+        quando applicabili al profilo. Le verifiche manuali non diventano
+        automaticamente blocchi.
       </p>
       <p>
         È un riepilogo parziale, non una certificazione di conformità o un

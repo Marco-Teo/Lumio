@@ -1,5 +1,15 @@
 # Sicurezza
 
+## Controlli FIAF alla pubblicazione
+
+La checklist frontend è informativa rispetto all'autorizzazione: la pubblicazione
+riesegue sul server gli stessi controlli configurabili FIAF tramite `publicationIssues`,
+oltre agli schemi, a MFA, membership, stato organizzazione, versione e lock già
+presenti. Nessuna proprietà inviata dal client può dichiarare superata la verifica.
+Le bozze restano salvabili incomplete; una pubblicazione rifiutata non crea revisioni
+né eventi di successo. Il profilo non certifica autenticità, conformità completa o
+riconoscimenti federali. Nessun nuovo accesso agli originali o privilegio giuria.
+
 ## Implementato fino a F3 locale
 
 Autenticazione Better Auth con password di almeno 12 caratteri, hashing della libreria, verifica email, reset con token a scadenza, revoca delle sessioni al reset e logout. Cookie HttpOnly/SameSite e Secure con origine HTTPS. Nessuna cookie cache per sessioni revocabili.

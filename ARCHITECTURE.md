@@ -1,5 +1,17 @@
 # Architettura
 
+## FIAF: catalogo, anteprima e pubblicazione
+
+Il catalogo browser-safe `regulatory-profiles` è immutabile e usa ID esatti, distinti
+per obiettivo e versione, senza fallback. Profilo e mappatura sono nel JSON delle
+revisioni. `fiaf-preview` è una funzione pura; `fiaf-publication` riutilizza i suoi
+risultati tramite una lista esplicita dei controlli applicabili alla pubblicazione.
+Non converte genericamente tutte le segnalazioni in blocchi. `publicationIssues`
+è condivisa tra checklist e transizione server; `editionWriteSchema` non applica
+questi requisiti alle bozze. Nessuna nuova dipendenza, tabella o modifica worker.
+Gli import della configurazione nei valutatori sono solo tipi, senza dipendenza
+runtime circolare. Ambito verificato e parti manuali: [FIAF 2027](FIAF-2027.md).
+
 ## Implementato fino a F3 locale
 
 Monorepo pnpm con apps/web (Next.js App Router, React, TypeScript strict) e tre package condivisi: packages/database, packages/jobs e packages/media. Il confine database esiste perché schema e client sono consumati dal web, dalle migrazioni e dai comandi operativi.

@@ -105,6 +105,18 @@ pnpm worker:ping accoda un job tecnico verificabile. La salute del worker locale
 
 ## Area organizzatore — F1
 
+### Integrazione FIAF 2027
+
+Sono presenti profili versionati Patrocinio/Raccomandazione, selezione e persistenza
+nel JSON dell'edizione, mappatura di sezioni/temi/TRAD e anteprima guidata accessibile.
+Le bozze FIAF incomplete restano salvabili. La pubblicazione richiede classificazione
+completa e controlla tipo/intervallo Portfolio e impostazioni JPEG/sRGB DIG quando
+associati al profilo. Si applica anche alle bozze esistenti, senza cambiare edizioni
+pubblicate o snapshot. Nessun preset applicato automaticamente o riconoscimento FIAF.
+La Raccomandazione non eredita automaticamente gli obblighi sui temi del Patrocinio.
+Dimensioni esatte, deroghe, verifiche documentali e contenuto delle opere restano
+parziali o manuali: [matrice di copertura e limiti](FIAF-2027.md).
+
 Dopo l'accettazione dell'invito, attivare l'autenticatore e aprire **Account → Le tue organizzazioni → nome organizzazione**. La Console Lumio resta dedicata al provisioning: un Super Admin senza membership non gestisce i concorsi dell'organizzazione.
 
 Creare il concorso permanente e poi una o più edizioni. La bozza può essere incompleta. Configurare date (ora locale del dispositivo, salvate in UTC), sezioni singole o portfolio e relativo ordine, quote in centesimi, documenti testuali, formati/dimensioni/profilo colore e metodo di voto. Queste sono impostazioni: elaborazione immagini, pagamenti e voto non sono ancora operativi.

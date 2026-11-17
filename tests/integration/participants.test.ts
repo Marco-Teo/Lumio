@@ -93,6 +93,10 @@ test('participant profile and registration ownership across tenants', async (t) 
   const config = {
     ...emptyEdition('Edizione aperta', 'edizione-aperta', '2026'),
     regulatoryProfile: { id: regulatoryCatalog.profiles[0].id },
+    imageRules: {
+      ...emptyEdition('Edizione', 'edizione', '2027').imageRules,
+      colorProfile: 'srgb' as const,
+    },
     regulatorySections: {
       profileId: regulatoryCatalog.profiles[0].id,
       sections: [{ sectionCode: 'L', sectionType: 'DIG', themeCode: 'PA' }],

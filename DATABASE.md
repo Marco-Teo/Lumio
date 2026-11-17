@@ -1,5 +1,16 @@
 # Database
 
+## Persistenza FIAF 2027
+
+`regulatoryProfile: { id }` e `regulatorySections: { profileId, sections }` sono
+campi facoltativi della configurazione JSON versionata, non colonne aggiunte
+alle tabelle operative. Il server valida ID, riferimenti e vocabolario; il DB
+mantiene RLS, FK composite, versioni e trigger di immutabilità esistenti.
+Non duplica il catalogo normativo in SQL. Le iscrizioni conservano il profilo e
+la mappatura nel proprio snapshot indipendente. I nuovi controlli di pubblicazione
+non aggiornano revisioni o snapshot e non richiedono migrazioni. Una bozza storica
+può ora richiedere correzioni prima della pubblicazione; la lettura resta invariata.
+
 ## Implementato
 
 PostgreSQL **18.6** locale/CI e Prisma **7.10.1**. Tabelle auth: user, session, account, verification, twoFactor. Tabelle foundation: person, organization, organization_membership, platform_role, audit_event.

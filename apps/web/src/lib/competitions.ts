@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { getRegulatoryProfile } from './regulatory-profiles';
+import { fiafPublicationIssues } from './fiaf-publication';
 import {
   regulatorySectionsSchema,
   fiaf2027SectionClassificationSchema,
@@ -264,7 +265,7 @@ export const editionWriteSchema = editionSchema.superRefine((edition, ctx) => {
 export type EditionConfiguration = z.infer<typeof editionSchema>;
 export type SectionConfiguration = z.infer<typeof sectionSchema>;
 export function publicationIssues(config: EditionConfiguration): string[] {
-  return [
+  const general = [
     !config.description && 'Inserisci la descrizione dell’edizione.',
     !config.opensAt && 'Imposta l’apertura delle iscrizioni.',
     !config.closesAt && 'Imposta la chiusura delle iscrizioni.',
@@ -274,6 +275,7 @@ export function publicationIssues(config: EditionConfiguration): string[] {
     !config.privacy && 'Inserisci l’informativa privacy.',
     config.sections.length === 0 && 'Aggiungi almeno una sezione.',
   ].filter((issue): issue is string => typeof issue === 'string');
+  return [...general, ...fiafPublicationIssues(config)];
 }
 export function emptyEdition(
   name: string,

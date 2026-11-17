@@ -496,6 +496,50 @@ test('organizer configures, versions, publishes and archives an edition', async 
     await expect(
       page.getByText('Versione 2 —', { exact: false }),
     ).toBeVisible();
+    const incompleteFiaf = await owner.edition.findUniqueOrThrow({
+      where: { id: savedIndependent.id },
+    });
+    const revisionCount = await owner.editionRevision.count({
+      where: { editionId: incompleteFiaf.id },
+    });
+    const blockedPublish = await page.request.patch(editionApi, {
+      headers: { Origin: 'http://127.0.0.1:3100' },
+      data: { version: incompleteFiaf.version, status: 'published' },
+    });
+    expect(blockedPublish.status()).toBe(400);
+    expect((await blockedPublish.json()).message).toContain('FIAF');
+    expect(
+      await owner.editionRevision.count({
+        where: { editionId: incompleteFiaf.id },
+      }),
+    ).toBe(revisionCount);
+    expect(
+      (
+        await owner.edition.findUniqueOrThrow({
+          where: { id: incompleteFiaf.id },
+        })
+      ).status,
+    ).toBe('draft');
+    await expect(
+      page.getByText(/FIAF.*Scegli esplicitamente/).first(),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Configura edizione' }).click();
+    for (const [group, type] of [
+      [first, 'PORTFOLIO'],
+      [second, 'DIG'],
+    ] as const) {
+      await group
+        .getByLabel('Sezione normativa FIAF', { exact: true })
+        .selectOption(type);
+      await group.getByLabel('Codice tema normativo FIAF').fill('LB');
+    }
+    await first.getByLabel('Minimo immagini per opera').fill('8');
+    await first.getByLabel('Massimo immagini per opera').fill('12');
+    await page
+      .getByLabel('Profilo colore', { exact: true })
+      .selectOption('srgb');
+    await page.getByRole('button', { name: 'Salva bozza' }).click();
+    await expect(page.getByRole('status')).toContainText('Bozza salvata');
     await page.getByRole('button', { name: 'Pubblica edizione' }).click();
     await expect(page.getByRole('status')).toContainText('Edizione pubblicata');
     const savedEdition = await owner.edition.findFirstOrThrow({

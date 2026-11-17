@@ -615,9 +615,45 @@ test('competition lifecycle, tenant isolation and immutable revisions', async (t
           independent,
           winningConfiguration,
         ]);
-        // The existing portfolio of 3 images stays valid: no FIAF presets/validation.
+        // Existing incomplete drafts still save, but cannot publish until corrected.
+        const auditCount = await owner.auditEvent.count({
+          where: { entityId: edition.id },
+        });
+        await assert.rejects(
+          transitionEdition(actor, orgA, contestId, edition.id, {
+            version: 3,
+            status: 'published',
+          }),
+          /Portfolio/,
+        );
+        const blocked = await owner.edition.findUniqueOrThrow({
+          where: { id: edition.id },
+        });
+        assert.equal(blocked.status, 'draft');
+        assert.equal(blocked.version, 3);
+        assert.equal(blocked.publishedAt, null);
+        assert.equal(
+          await owner.auditEvent.count({ where: { entityId: edition.id } }),
+          auditCount,
+        );
+        assert.deepEqual(await read(), before);
+        const corrected = {
+          ...winningConfiguration,
+          sections: winningConfiguration.sections.map((section) => ({
+            ...section,
+            minImages: 8,
+            maxImages: 12,
+          })),
+        };
+        await saveEdition(
+          actor,
+          orgA,
+          contestId,
+          { version: 3, configuration: corrected },
+          edition.id,
+        );
         await transitionEdition(actor, orgA, contestId, edition.id, {
-          version: 3,
+          version: 4,
           status: 'published',
         });
         await assert.rejects(
@@ -630,14 +666,14 @@ test('competition lifecycle, tenant isolation and immutable revisions', async (t
           ),
           /modificabile/,
         );
-        assert.deepEqual(await read(), before);
+        assert.deepEqual(await read(), [...before, corrected]);
         const listed = await listCompetitions(actor, orgA);
         assert.deepEqual(
           listed.contests
             .find((contest) => contest.id === contestId)
             ?.editions.find((row) => row.id === edition.id)?.revisions[0]
             .configuration,
-          winningConfiguration,
+          corrected,
         );
       }
     },
