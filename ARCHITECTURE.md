@@ -26,6 +26,12 @@ withOrganization imposta utente e organizzazione in una transazione, verifica me
 
 ## Decisioni pianificate
 
+La Fase A dell'anonimato riutilizza `Entry.anonymousCode` senza migrazioni. Un
+contratto puro in `lib/anonymous-work.ts` e una proiezione in `server/jury` limitano
+i dati a codice e posizioni. Non ci sono query o percorsi HTTP nuovi; proiettare
+dati non concede accesso. Assegnazioni, copie fotografiche dedicate e manifest
+di rilascio restano successivi, come descritto in [ANONYMITY.md](ANONYMITY.md).
+
 La console /platform e il worker sono implementati. packages/jobs condivide contratti, protezione payload e trasporto email, effettivamente usati da web e worker. Il rate limiting attuale è in memoria e il deployment è limitato a una replica; prima di scalare occorre uno store condiviso.
 
 Concorso permanente e più edizioni sono implementati in F1; Account, Persona e Iscrizione restano entità distinte in F2, con dati iscrizione locali. F3 implementa Opera, Fotografia e Revisioni distinte, originali immutabili e pipeline asincrona locale idempotente con anteprime prive di metadati. Accessi e copie dedicati alla giuria ed export separati rimangono pianificati.

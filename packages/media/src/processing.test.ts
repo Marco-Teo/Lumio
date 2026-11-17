@@ -76,17 +76,81 @@ it('recognizes Unicode sRGB descriptions only in the new validation version and 
     }),
   ).resolves.toMatchObject({ format: 'jpeg' });
 });
-it('creates a preview without EXIF or ICC and preserves the exact original bytes', async () => {
-  const original = await image()
+it('removes EXIF/GPS, IPTC, XMP and ICC from previews while preserving the exact original bytes', async () => {
+  const jpeg = await image()
     .jpeg()
-    .withMetadata({ exif: { IFD0: { Artist: 'Synthetic identity' } } })
+    .withMetadata({
+      exif: {
+        IFD0: { Artist: 'Synthetic identity' },
+        IFD3: {
+          GPSLatitudeRef: 'N',
+          GPSLatitude: '45/1 0/1 0/1',
+          GPSLongitudeRef: 'E',
+          GPSLongitude: '9/1 0/1 0/1',
+        },
+      },
+    })
+    .withXmp(
+      '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" dc:creator="Synthetic identity"/></rdf:RDF></x:xmpmeta>',
+    )
     .toBuffer();
+  // Add a real JPEG Photoshop APP13/IPTC author block to the synthetic fixture.
+  const author = Buffer.from('Synthetic IPTC identity');
+  const record = Buffer.alloc(5);
+  record.set([0x1c, 2, 80]);
+  record.writeUInt16BE(author.length, 3);
+  const iptc = Buffer.concat([record, author]);
+  const size = Buffer.alloc(4);
+  size.writeUInt32BE(iptc.length);
+  const payload = Buffer.concat([
+    Buffer.from('Photoshop 3.0\0' + '8BIM'),
+    Buffer.from([4, 4, 0, 0]),
+    size,
+    iptc,
+    ...(iptc.length % 2 ? [Buffer.from([0])] : []),
+  ]);
+  const header = Buffer.from([255, 237, 0, 0]);
+  header.writeUInt16BE(payload.length + 2, 2);
+  const original = Buffer.concat([
+    jpeg.subarray(0, 2),
+    header,
+    payload,
+    jpeg.subarray(2),
+  ]);
+  const before = await sharp(original).metadata();
+  expect(before.exif).toBeDefined();
+  expect(before.exif!.includes(Buffer.from('Synthetic identity'))).toBe(true);
+  const exif = before.exif!;
+  const littleEndian = exif.toString('ascii', 6, 8) === 'II';
+  const uint16 = (offset: number) =>
+    littleEndian ? exif.readUInt16LE(offset) : exif.readUInt16BE(offset);
+  const uint32 = (offset: number) =>
+    littleEndian ? exif.readUInt32LE(offset) : exif.readUInt32BE(offset);
+  const directory = (offset: number) =>
+    Array.from(
+      { length: uint16(offset) },
+      (_, index) => offset + 2 + index * 12,
+    );
+  const gps = directory(6 + uint32(10)).find(
+    (offset) => uint16(offset) === 0x8825,
+  );
+  expect(gps).toBeDefined();
+  expect(directory(6 + uint32(gps! + 8)).map(uint16)).toEqual(
+    expect.arrayContaining([1, 2, 3, 4]),
+  );
+  expect(before.iptc).toBeDefined();
+  expect(before.iptc!.includes(author)).toBe(true);
+  expect(before.xmp).toBeDefined();
+  expect(before.xmp!.includes(Buffer.from('Synthetic identity'))).toBe(true);
+  expect(before.icc).toBeDefined();
   const copy = Buffer.from(original);
   const result = await processPhoto(original, rules);
   const metadata = await sharp(result.preview).metadata();
   expect(metadata.format).toBe('webp');
   expect(metadata.exif).toBeUndefined();
   expect(metadata.icc).toBeUndefined();
+  expect(metadata.iptc).toBeUndefined();
+  expect(metadata.xmp).toBeUndefined();
   expect(original.equals(copy)).toBe(true);
   expect(result.width).toBe(80);
 });

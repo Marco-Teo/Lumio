@@ -2,6 +2,28 @@
 
 Questo registro descrive il lavoro fino a F3 locale e gli incrementi FIAF 2027. Le funzionalità future sono indicate separatamente.
 
+## Anonimato giuria — Fase A
+
+Riutilizzato il codice anonimo stabile già presente per ogni opera. Aggiunti
+contratto minimo strict/readonly e proiezione a campi espliciti: codice e posizioni,
+senza dati personali, ID interni, testo libero, hash, date, storage key o URL.
+Nessun endpoint, assegnazione, rilascio, migrazione o nuovo privilegio.
+Test per minimizzazione, immutabilità della proiezione e stabilità del codice
+attraverso retry, modifiche e revisioni; estesa la verifica delle anteprime a
+EXIF/GPS, IPTC, XMP e ICC. Originali e pipeline produttiva non modificati.
+Decisioni e funzionalità future distinte in [ANONYMITY.md](ANONYMITY.md).
+
+Verificati lint, formattazione, typecheck, 195 test unitari, 59 integrazioni e
+10 E2E, compresi i controlli esistenti di ownership, ID arbitrari, originali
+negati a terzi e isolamento tenant. Nessuna autorizzazione giuria è ancora
+implementata o dichiarata verificata da queste suite.
+
+La revisione completa le decisioni future: pubblicazione per tutti dei soli nomi
+dei vincitori autorizzati, senza mappatura completa per la giuria; premiazioni
+nascoste/pubbliche controllate dall'organizzatore. Il contratto anonimo rifiuta
+anche campi relativi a risultati e vincitori. Rafforzata la verifica del marcatore
+identificativo nella fixture XMP; nessuna funzionalità risultati implementata.
+
 ## FIAF 2027 — policy fotografica ordinaria per sezione
 
 Policy esplicita e versionata negli snapshot: Patrocinio DIG JPEG/sRGB, DIG/IS

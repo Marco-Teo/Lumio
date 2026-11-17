@@ -26,6 +26,7 @@ import {
   renamePhoto,
 } from '../../apps/web/src/server/entries';
 import { processPhotoEvent } from '../../apps/worker/src/photos';
+import { projectAnonymousWork } from '../../apps/web/src/server/jury/project-work';
 
 test('participant photos preserve originals, isolate ownership and process immutable revisions', async (t) => {
   if (
@@ -131,6 +132,45 @@ test('participant photos preserve originals, isolate ownership and process immut
       title: 'Original title',
       sectionCode: 'S',
     });
+    const originalEntry = await owner.entry.findUniqueOrThrow({
+      where: { id: entry.id },
+      include: { photos: true },
+    });
+    const stableCode = originalEntry.anonymousCode;
+    await t.test(
+      'anonymous codes are server-generated and remain absent from participant responses',
+      async () => {
+        assert.match(
+          stableCode,
+          /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+        );
+        for (const internalId of [
+          entry.id,
+          registrationId,
+          organizationId,
+          userId,
+        ])
+          assert.notEqual(stableCode, internalId);
+        assert.deepEqual(projectAnonymousWork(originalEntry), {
+          code: stableCode,
+          photos: [],
+        });
+        assert.equal(JSON.stringify(entry).includes(stableCode), false);
+        assert.equal(
+          JSON.stringify(await listEntries(actor, registrationId)).includes(
+            stableCode,
+          ),
+          false,
+        );
+        await assert.rejects(
+          createEntry(actor, registrationId, {
+            title: 'Forged code',
+            sectionCode: 'S',
+            anonymousCode: randomUUID(),
+          }),
+        );
+      },
+    );
     await t.test(
       'batch entry retries reuse their original parent without duplicate works',
       async () => {
@@ -140,12 +180,20 @@ test('participant photos preserve originals, isolate ownership and process immut
           title: 'Batch parent',
           sectionCode: 'S',
         });
+        const codeBeforeRetry = (
+          await owner.entry.findUniqueOrThrow({ where: { id: first.id } })
+        ).anonymousCode;
         const retry = await createEntry(actor, registrationId, {
           id,
           title: 'Batch parent',
           sectionCode: 'S',
         });
         assert.equal(first.id, retry.id);
+        const code = (
+          await owner.entry.findUniqueOrThrow({ where: { id: first.id } })
+        ).anonymousCode;
+        assert.equal(code, codeBeforeRetry);
+        assert.notEqual(code, stableCode);
         assert.equal(
           await owner.entry.count({ where: { id, registrationId } }),
           1,
@@ -163,6 +211,11 @@ test('participant photos preserve originals, isolate ownership and process immut
           version: 1,
           active: false,
         });
+        assert.equal(
+          (await owner.entry.findUniqueOrThrow({ where: { id } }))
+            .anonymousCode,
+          code,
+        );
       },
     );
     await t.test(
@@ -255,6 +308,9 @@ test('participant photos preserve originals, isolate ownership and process immut
         await denied("UPDATE photo_revision SET sha256=repeat('0',64)");
         await denied('DELETE FROM photo_revision');
         await denied('UPDATE entry SET "sectionCode"=\'P\'');
+        await denied(
+          'UPDATE entry SET "anonymousCode"=gen_random_uuid()::text',
+        );
         await denied("UPDATE photo_processing SET status='ready'");
         await assert.rejects(worker.user.findMany());
       },
@@ -677,6 +733,34 @@ test('participant photos preserve originals, isolate ownership and process immut
           ).configurationSnapshot,
           frozen.configurationSnapshot,
         );
+      },
+    );
+    await t.test(
+      'anonymous projection keeps the existing code across photo revisions without exposing their identifiers',
+      async () => {
+        const current = await owner.entry.findUniqueOrThrow({
+          where: { id: entry.id },
+          include: { photos: { include: { revisions: true } } },
+        });
+        assert.equal(current.anonymousCode, stableCode);
+        assert.ok(current.photos[0].revisions.length > 1);
+        const projected = projectAnonymousWork(current);
+        assert.deepEqual(projected, {
+          code: stableCode,
+          photos: current.photos.map((photo) => ({ position: photo.position })),
+        });
+        const serialized = JSON.stringify(projected);
+        for (const identifier of [
+          entry.id,
+          registrationId,
+          organizationId,
+          userId,
+          ...current.photos.flatMap((photo) => [
+            photo.id,
+            ...photo.revisions.map((row) => row.id),
+          ]),
+        ])
+          assert.equal(serialized.includes(identifier), false);
       },
     );
     await t.test(

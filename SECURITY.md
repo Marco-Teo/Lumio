@@ -27,6 +27,18 @@ riconoscimenti federali. Nessun nuovo accesso agli originali o privilegio giuria
 
 ## Implementato fino a F3 locale
 
+La Fase A dell'anonimato prepara una proiezione a campi ammessi esplicitamente,
+senza identità, ID interni, testo libero o URL. Il codice anonimo esistente non
+diventa una credenziale e non viene esposto nelle API partecipante. Nessun nuovo
+permesso, endpoint o accesso ai file: l'isolamento della futura giuria resta da
+implementare. Sono confermati rilascio esplicito dopo scadenza e incompatibilità
+fra accesso ai partecipanti e giuria nella stessa edizione; queste decisioni non
+sono ancora controlli eseguibili. Limiti e fasi: [ANONYMITY.md](ANONYMITY.md).
+Per le fasi successive sono confermate premiazioni nascoste/pubbliche controllate
+dall'organizzatore e pubblicazione dei soli nomi dei vincitori autorizzati per
+tutti, giurati inclusi. Non concede la mappatura completa autore-opera; nessuno
+di questi stati o accessi è implementato in Fase A.
+
 Autenticazione Better Auth con password di almeno 12 caratteri, hashing della libreria, verifica email, reset con token a scadenza, revoca delle sessioni al reset e logout. Cookie HttpOnly/SameSite e Secure con origine HTTPS. Nessuna cookie cache per sessioni revocabili.
 
 MFA TOTP con verifica di enrollment, codici di recupero e challenge al login. La lettura amministrativa dell'organizzazione richiede MFA abilitata e una sessione completata. La console Lumio richiede inoltre il ruolo super_admin. L’assegnazione di tale ruolo avviene solo da CLI operatore, mai dal browser.

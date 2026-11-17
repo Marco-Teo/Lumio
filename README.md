@@ -6,6 +6,10 @@ Piattaforma per concorsi fotografici. Stato: **F3 — opere, originali e antepri
 
 Il [registro di avanzamento](CHANGELOG.md) riepiloga le fasi completate, le verifiche locali e le funzionalità ancora pianificate.
 
+Le [fondamenta dell'anonimato verso la giuria](ANONYMITY.md) riutilizzano il codice
+anonimo delle opere e preparano un contratto separato, senza dati personali o ID
+interni. Non sono ancora presenti endpoint, assegnazioni o accessi per i giurati.
+
 Homepage, registrazione, verifica email, login/logout, recupero password con revoca sessioni, MFA TOTP e codici di recupero. PostgreSQL, Prisma e isolamento RLS. Console Lumio per provisioning, inviti amministrativi asincroni, sospensione/riattivazione e audit. Area organizzatore per configurare competizioni e consultare bozze di iscrizione. Catalogo pubblico delle edizioni pubblicate, profilo personale e dati dell'iscrizione indipendenti con documenti versionati.
 
 ## Requisiti e avvio da clone pulito
