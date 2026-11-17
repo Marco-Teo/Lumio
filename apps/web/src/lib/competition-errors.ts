@@ -12,6 +12,7 @@ const labels: Record<string, string> = {
   identifier: 'Anno o identificatore',
   regulatoryProfile: 'Tipo di configurazione',
   regulatorySections: 'Classificazione normativa delle sezioni',
+  regulatoryPhotoPolicy: 'Policy fotografica FIAF',
   opensAt: 'Apertura iscrizioni',
   closesAt: 'Chiusura iscrizioni',
   juryAt: 'Data giuria',

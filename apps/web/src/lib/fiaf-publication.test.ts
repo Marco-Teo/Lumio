@@ -7,6 +7,7 @@ import {
   type EditionConfiguration,
 } from './competitions';
 import { fiafPublicationIssues } from './fiaf-publication';
+import { fiafPhotoPolicyId } from './fiaf-photo-policy';
 import { regulatoryCatalog } from './regulatory-profiles';
 
 function configuration(
@@ -20,6 +21,7 @@ function configuration(
   return {
     ...emptyEdition('Edizione', 'edizione', '2027'),
     regulatoryProfile: { id: profile.id },
+    regulatoryPhotoPolicy: { id: fiafPhotoPolicyId, profileId: profile.id },
     regulatorySections: {
       profileId: profile.id,
       sections: [{ sectionCode: 'A', sectionType, themeCode: 'LB' }],
@@ -86,11 +88,13 @@ describe('FIAF publication policy, separate from draft validation', () => {
   });
   it('enforces the DIG configuration only for associated profiles, not for IS or independent editions', () => {
     const config = configuration('patrocinio', 'DIG');
-    expect(fiafPublicationIssues(config).join(' ')).toContain('JPEG e sRGB');
+    expect(fiafPublicationIssues(config)).toEqual([]);
     config.imageRules.colorProfile = 'srgb';
     expect(fiafPublicationIssues(config)).toEqual([]);
     config.imageRules.formats.push('png');
-    expect(fiafPublicationIssues(config).length).toBe(1);
+    expect(fiafPublicationIssues(config)).toEqual([]);
+    config.imageRules.formats = ['png'];
+    expect(fiafPublicationIssues(config).join(' ')).toContain('JPEG');
     expect(
       fiafPublicationIssues(configuration('raccomandazione', 'DIG')),
     ).toEqual([]);
@@ -99,14 +103,15 @@ describe('FIAF publication policy, separate from draft validation', () => {
     );
     delete config.regulatoryProfile;
     delete config.regulatorySections;
+    delete config.regulatoryPhotoPolicy;
     expect(fiafPublicationIssues(config)).toEqual([]);
   });
-  it('does not elevate dimensional exceptions or manual checks to blockers', () => {
+  it('checks ordinary dimensions only after explicit policy confirmation', () => {
     const config = configuration('patrocinio', 'DIG');
     config.imageRules.colorProfile = 'srgb';
     for (const cap of [null, 2000, 2500, 3000]) {
       config.imageRules.maxLongEdge = cap;
-      expect(fiafPublicationIssues(config)).toEqual([]);
+      expect(fiafPublicationIssues(config).length).toBe(cap === 2000 ? 1 : 0);
     }
   });
   it('fails closed for unavailable IDs without upgrading historical reads', () => {

@@ -6,6 +6,10 @@ import {
   InvalidPhoto,
 } from '@lumio/media/processing';
 import { readMedia, mediaKey, writeImmutable } from '@lumio/media/storage';
+import {
+  photoPolicyContextSchema,
+  sectionPhotoRules,
+} from '@lumio/media/photo-policy';
 
 export async function processPhotoEvent(
   tx: Prisma.TransactionClient,
@@ -25,6 +29,14 @@ export async function processPhotoEvent(
   )
     throw new Error('INVALID_MEDIA_EVENT');
   if (revision.processing.status !== 'pending') return;
+  const [projection] = await tx.$queryRaw<
+    Array<{ context: unknown }>
+  >`SELECT public.photo_policy_context(${revisionId}::text) AS context`;
+  const context = photoPolicyContextSchema.parse(projection?.context);
+  const rules = sectionPhotoRules(
+    { ...context, imageRules: imageRulesSchema.parse(revision.rules) },
+    context.sectionCode,
+  );
   const bytes = await readMedia(revision.storageKey);
   if (
     bytes.length !== revision.bytes ||
@@ -32,10 +44,7 @@ export async function processPhotoEvent(
   )
     throw new Error('ORIGINAL_INTEGRITY_FAILED');
   try {
-    const result = await processPhoto(
-      bytes,
-      imageRulesSchema.parse(revision.rules),
-    );
+    const result = await processPhoto(bytes, rules);
     const previewKey = mediaKey(organizationId, revisionId, 'preview');
     await writeImmutable(previewKey, result.preview);
     await tx.photoProcessing.update({

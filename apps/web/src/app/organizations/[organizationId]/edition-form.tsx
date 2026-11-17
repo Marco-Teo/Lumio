@@ -3,6 +3,10 @@
 import { useId, useRef, useState } from 'react';
 import { FiafPreview } from '../fiaf-preview';
 import {
+  fiafPhotoPolicyId,
+  sectionPhotoRulesLabel,
+} from '../../../lib/fiaf-photo-policy';
+import {
   fiaf2027SectionTypes,
   fiaf2027Themes,
   fiaf2027TradAllowed,
@@ -76,19 +80,25 @@ export function EditionForm({
     const {
       regulatoryProfile: previous,
       regulatorySections,
+      regulatoryPhotoPolicy,
       ...independent
     } = config;
     void previous;
     if (
-      regulatorySections &&
-      regulatorySections.profileId !== id &&
+      (regulatorySections || regulatoryPhotoPolicy) &&
+      (regulatorySections?.profileId ?? regulatoryPhotoPolicy?.profileId) !==
+        id &&
       !window.confirm(
-        'La mappatura normativa appartiene al profilo precedente. Rimuoverla per cambiare profilo? Le altre impostazioni rimangono invariate. Annulla per conservarla.',
+        'La mappatura normativa e la policy fotografica appartengono al profilo precedente. Rimuoverle per cambiare profilo? Le altre impostazioni rimangono invariate. Annulla per conservarle.',
       )
     )
       return;
-    const retainedMapping =
-      regulatorySections?.profileId === id ? { regulatorySections } : {};
+    const retainedMapping = {
+      ...(regulatorySections?.profileId === id ? { regulatorySections } : {}),
+      ...(regulatoryPhotoPolicy?.profileId === id
+        ? { regulatoryPhotoPolicy }
+        : {}),
+    };
     const next = id
       ? { ...independent, ...retainedMapping, regulatoryProfile: { id } }
       : independent;
@@ -463,6 +473,55 @@ export function EditionForm({
           )}
           {config.regulatoryProfile && (
             <div className="regulatory-profile-summary">
+              {selectedProfile?.normativeVersion === '2027' && (
+                <>
+                  <Field
+                    label="Conferma policy fotografica ordinaria FIAF 2027"
+                    path="regulatoryPhotoPolicy"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={
+                        config.regulatoryPhotoPolicy?.id === fiafPhotoPolicyId
+                      }
+                      onChange={(event) => {
+                        const { regulatoryPhotoPolicy: omitted, ...rest } =
+                          config;
+                        void omitted;
+                        update(
+                          event.target.checked
+                            ? {
+                                ...rest,
+                                regulatoryPhotoPolicy: {
+                                  id: fiafPhotoPolicyId,
+                                  profileId: config.regulatoryProfile!.id,
+                                },
+                              }
+                            : rest,
+                        );
+                        setProfileDirty(true);
+                      }}
+                    />
+                  </Field>
+                  <p>
+                    La conferma sarà salvata con «Salva bozza». Per Patrocinio:
+                    DIG richiede JPEG/sRGB; DIG e IS richiedono il lato maggiore
+                    esatto di 2.500 px. Le altre regole immagini restano attive.
+                    La deroga internazionale non è supportata: per quel caso non
+                    usare questa policy ordinaria.
+                  </p>
+                  {config.regulatoryPhotoPolicy && (
+                    <ul>
+                      {config.sections.map((row) => (
+                        <li key={row.code}>
+                          {row.name} ({row.code}):{' '}
+                          {sectionPhotoRulesLabel(config, row.code)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
               <p>
                 Questa configurazione aiuta a seguire il regolamento FIAF. Non
                 concede Patrocinio o Raccomandazione e non garantisce
@@ -482,8 +541,9 @@ export function EditionForm({
                     {selectedProfile.implementationVersion}.
                   </p>
                   <p>
-                    Nessuna impostazione viene applicata automaticamente. Alcune
-                    verifiche richiedono un intervento umano.
+                    La policy fotografica si applica soltanto dopo la conferma
+                    esplicita. Le altre verifiche richiedono ancora un
+                    intervento umano.
                   </p>
                   <ul>
                     {(

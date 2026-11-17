@@ -6,6 +6,10 @@ import type { EditionConfiguration } from '../../../lib/competitions';
 import type { listEntries } from '../../../server/entries';
 import { batchPositions } from '../../../lib/photo-batch';
 import { PhotoDropzone } from './photo-dropzone';
+import {
+  sectionPhotoRules,
+  sectionPhotoRulesLabel,
+} from '../../../lib/fiaf-photo-policy';
 import { Icon } from '../../components/ui-icon';
 
 type Entries = Awaited<ReturnType<typeof listEntries>>;
@@ -354,12 +358,14 @@ export function EntriesEditor({
       if (selection?.entryId === entry.id) setSelection(null);
     }, 'Opera e fotografie rimosse dalla bozza.');
   }
-  const accept = configuration.imageRules.formats
-    .map(
-      (format) =>
-        ({ jpeg: '.jpg,.jpeg', png: '.png', tiff: '.tif,.tiff' })[format],
-    )
-    .join(',');
+  const acceptedFormats = (code: string) =>
+    sectionPhotoRules(configuration, code)
+      .formats.map(
+        (format) =>
+          ({ jpeg: '.jpg,.jpeg', png: '.png', tiff: '.tif,.tiff' })[format],
+      )
+      .join(',');
+  const accept = acceptedFormats(sectionCode);
   function picker(
     entryId: string,
     position: number,
@@ -369,7 +375,9 @@ export function EntriesEditor({
     return (
       <PhotoDropzone
         label={label}
-        accept={accept}
+        accept={acceptedFormats(
+          entries.find((row) => row.id === entryId)?.sectionCode ?? sectionCode,
+        )}
         multiple={Boolean(positions)}
         disabled={!editable || busy || Boolean(selection)}
         onError={setError}
@@ -395,27 +403,47 @@ export function EntriesEditor({
       </p>
       <details>
         <summary>Regole delle fotografie</summary>
-        <p>
-          Formati: {configuration.imageRules.formats.join(', ')}. Dimensione
-          massima:{' '}
-          {photoSizeLabel(
-            effectivePhotoBytes(configuration.imageRules.maxBytes),
-          )}{' '}
-          per file; massimo 40 megapixel e una sola pagina/fotogramma.
-        </p>
-        <p>
-          Dimensioni minime:{' '}
-          {configuration.imageRules.minWidth ?? 'nessun limite'} ×{' '}
-          {configuration.imageRules.minHeight ?? 'nessun limite'} px. Lato lungo
-          massimo: {configuration.imageRules.maxLongEdge ?? 'nessun limite'} px;
-          lato corto massimo:{' '}
-          {configuration.imageRules.maxShortEdge ?? 'nessun limite'} px.
-          Profilo:{' '}
-          {configuration.imageRules.colorProfile === 'srgb'
-            ? 'sRGB'
-            : 'qualsiasi'}
-          .
-        </p>
+        {configuration.regulatoryPhotoPolicy ? (
+          <>
+            <p>
+              Massimo 40 megapixel e una sola pagina/fotogramma per file. Le
+              regole specifiche sono indicate per ciascuna sezione.
+            </p>
+            <ul>
+              {configuration.sections.map((row) => (
+                <li key={row.code}>
+                  {row.name} ({row.code}):{' '}
+                  {sectionPhotoRulesLabel(configuration, row.code)}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <>
+            <p>
+              Formati: {configuration.imageRules.formats.join(', ')}. Dimensione
+              massima:{' '}
+              {photoSizeLabel(
+                effectivePhotoBytes(configuration.imageRules.maxBytes),
+              )}{' '}
+              per file; massimo 40 megapixel e una sola pagina/fotogramma.
+            </p>
+            <p>
+              Dimensioni minime:{' '}
+              {configuration.imageRules.minWidth ?? 'nessun limite'} ×{' '}
+              {configuration.imageRules.minHeight ?? 'nessun limite'} px. Lato
+              lungo massimo:{' '}
+              {configuration.imageRules.maxLongEdge ?? 'nessun limite'} px; lato
+              corto massimo:{' '}
+              {configuration.imageRules.maxShortEdge ?? 'nessun limite'} px.
+              Profilo:{' '}
+              {configuration.imageRules.colorProfile === 'srgb'
+                ? 'sRGB'
+                : 'qualsiasi'}
+              .
+            </p>
+          </>
+        )}
       </details>
       {editable && (
         <form

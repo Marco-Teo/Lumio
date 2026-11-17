@@ -38,6 +38,7 @@ test('participant photos preserve originals, isolate ownership and process immut
     worker = createDatabase(process.env.WORKER_DATABASE_URL),
     runtime = database();
   const organizationId = randomUUID(),
+    otherOrganizationId = randomUUID(),
     userId = randomUUID(),
     otherId = randomUUID();
   const actor = {
@@ -386,6 +387,299 @@ test('participant photos preserve originals, isolate ownership and process immut
       },
     );
     await t.test(
+      'legacy FIAF revisions remain processable and policy context is limited to its selected tenant',
+      async () => {
+        await owner.organization.create({
+          data: {
+            id: otherOrganizationId,
+            name: 'Other synthetic tenant',
+            slug: `photos-${otherOrganizationId}`,
+            contactEmail: actor.email,
+          },
+        });
+        await owner.organizationMembership.create({
+          data: { organizationId: otherOrganizationId, userId },
+        });
+        const foreignContest = await saveContest(actor, otherOrganizationId, {
+          name: 'Historical FIAF',
+          slug: 'historical-fiaf',
+          description: '',
+        });
+        const profileId = 'fiaf-2027-patrocinio-v1';
+        const legacy = {
+          ...config,
+          sections: [config.sections[0]],
+          regulatoryProfile: { id: profileId },
+          regulatorySections: {
+            profileId,
+            sections: [
+              { sectionCode: 'S', sectionType: 'DIG', themeCode: 'LB' },
+            ],
+          },
+        };
+        const historical = await saveEdition(
+          actor,
+          otherOrganizationId,
+          foreignContest.id,
+          { configuration: legacy },
+        );
+        // Migrator creates a synthetic pre-policy published fixture. No existing
+        // edition, snapshot or photo revision is rewritten by this test.
+        await owner.edition.update({
+          where: { id: historical.id },
+          data: { status: 'published', publishedAt: new Date() },
+        });
+        const registered = await startRegistration(actor, historical.id, {
+          editionVersion: 1,
+          acceptRegulations: true,
+          acknowledgePrivacy: true,
+        });
+        const work = await createEntry(actor, registered.id, {
+          title: 'Historical',
+          sectionCode: 'S',
+        });
+        const id = randomUUID();
+        await uploadPhoto(actor, registered.id, work.id, 1, id, original);
+        await worker.$transaction(async (tx) => {
+          await tx.$executeRaw`SELECT set_config('app.organization_id',${organizationId},true)`;
+          await tx.$executeRaw`SELECT set_config('app.photo_revision_id',${id},true)`;
+          const denied = await tx.$queryRaw<
+            Array<{ context: unknown }>
+          >`SELECT public.photo_policy_context(${id}::text) AS context`;
+          assert.equal(denied[0].context, null);
+          await tx.$executeRaw`SELECT set_config('app.organization_id',${otherOrganizationId},true)`;
+          const permitted = await tx.$queryRaw<
+            Array<{ context: unknown }>
+          >`SELECT public.photo_policy_context(${id}::text) AS context`;
+          assert.deepEqual(permitted[0].context, {
+            sectionCode: 'S',
+            regulatoryProfile: legacy.regulatoryProfile,
+            regulatorySections: {
+              profileId,
+              sections: [{ sectionCode: 'S', sectionType: 'DIG' }],
+            },
+          });
+        });
+        // GUC scope is transaction-local and caller-controlled by the trusted worker.
+        const cleared = await worker.$queryRaw<
+          Array<{ context: unknown }>
+        >`SELECT public.photo_policy_context(${id}::text) AS context`;
+        assert.equal(cleared[0].context, null);
+        await worker.$transaction(
+          (tx) => processPhotoEvent(tx, otherOrganizationId, id),
+          { timeout: 25000 },
+        );
+        assert.equal(
+          (
+            await owner.photoProcessing.findUniqueOrThrow({
+              where: { revisionId: id },
+            })
+          ).status,
+          'ready',
+        );
+        assert.deepEqual(
+          (
+            await owner.registration.findUniqueOrThrow({
+              where: { id: registered.id },
+            })
+          ).configurationSnapshot,
+          legacy,
+        );
+        assert.deepEqual(
+          (await owner.photoRevision.findUniqueOrThrow({ where: { id } }))
+            .rules,
+          legacy.imageRules,
+        );
+        assert.deepEqual(
+          await photoFile(actor, registered.id, id, true),
+          original,
+        );
+      },
+    );
+    await t.test(
+      'FIAF section policy is frozen in registration and photo rules, without changing legacy revisions',
+      async () => {
+        const profileId = 'fiaf-2027-patrocinio-v1';
+        const fiaf = {
+          ...config,
+          slug: 'fiaf-photos',
+          name: 'FIAF photos',
+          regulatoryProfile: { id: profileId },
+          regulatoryPhotoPolicy: {
+            id: 'fiaf-2027-ordinary-photo-v1',
+            profileId,
+          },
+          regulatorySections: {
+            profileId,
+            sections: [
+              { sectionCode: 'S', sectionType: 'DIG', themeCode: 'LB' },
+              { sectionCode: 'I', sectionType: 'IS', themeCode: 'LB' },
+            ],
+          },
+          imageRules: {
+            ...config.imageRules,
+            formats: ['jpeg', 'png'] as Array<'jpeg' | 'png'>,
+          },
+          sections: [
+            config.sections[0],
+            { ...config.sections[0], code: 'I', name: 'Synthesis' },
+          ],
+        };
+        const created = await saveEdition(actor, organizationId, contest.id, {
+          configuration: {
+            ...fiaf,
+            imageRules: { ...fiaf.imageRules, maxLongEdge: 2499 },
+          },
+        });
+        await assert.rejects(
+          transitionEdition(actor, organizationId, contest.id, created.id, {
+            version: 1,
+            status: 'published',
+          }),
+          /2.500/,
+        );
+        assert.equal(
+          (await owner.edition.findUniqueOrThrow({ where: { id: created.id } }))
+            .status,
+          'draft',
+        );
+        await saveEdition(
+          actor,
+          organizationId,
+          contest.id,
+          { version: 1, configuration: fiaf },
+          created.id,
+        );
+        await transitionEdition(actor, organizationId, contest.id, created.id, {
+          version: 2,
+          status: 'published',
+        });
+        const registered = await startRegistration(actor, created.id, {
+          editionVersion: 2,
+          acceptRegulations: true,
+          acknowledgePrivacy: true,
+        });
+        const frozen = await owner.registration.findUniqueOrThrow({
+          where: { id: registered.id },
+        });
+        assert.deepEqual(frozen.configurationSnapshot, fiaf);
+        const dig = await createEntry(actor, registered.id, {
+          sectionCode: 'S',
+          title: 'Digital',
+        });
+        await assert.rejects(
+          uploadPhoto(actor, registered.id, dig.id, 1, randomUUID(), original),
+          /Formato/,
+        );
+        await assert.rejects(
+          uploadPhoto(other, registered.id, dig.id, 1, randomUUID(), original),
+        );
+        for (const width of [2499, 2500]) {
+          const bytes = await sharp({
+            create: { width, height: 1200, channels: 3, background: '#777777' },
+          })
+            .jpeg()
+            .withMetadata()
+            .toBuffer();
+          const id = randomUUID();
+          await uploadPhoto(actor, registered.id, dig.id, 1, id, bytes);
+          const revision = await owner.photoRevision.findUniqueOrThrow({
+            where: { id },
+          });
+          assert.deepEqual(revision.rules, fiaf.imageRules);
+          await assert.rejects(worker.registration.findMany());
+          await assert.rejects(worker.entry.findMany());
+          await assert.rejects(
+            runtime.$queryRaw`SELECT public.photo_policy_context(${id}::text)`,
+          );
+          const context = (
+            tenant: string,
+            assigned: string,
+            requested: string,
+          ) =>
+            worker.$transaction(async (tx) => {
+              await tx.$executeRaw`SELECT set_config('app.organization_id',${tenant},true)`;
+              await tx.$executeRaw`SELECT set_config('app.photo_revision_id',${assigned},true)`;
+              const [row] = await tx.$queryRaw<
+                Array<{ context: unknown }>
+              >`SELECT public.photo_policy_context(${requested}::text) AS context`;
+              return row.context;
+            });
+          assert.equal(await context('', '', id), null);
+          assert.equal(await context(randomUUID(), id, id), null);
+          assert.equal(await context(organizationId, id, revisionId), null);
+          assert.deepEqual(await context(organizationId, id, id), {
+            sectionCode: 'S',
+            regulatoryProfile: fiaf.regulatoryProfile,
+            regulatoryPhotoPolicy: fiaf.regulatoryPhotoPolicy,
+            regulatorySections: {
+              profileId,
+              sections: [{ sectionCode: 'S', sectionType: 'DIG' }],
+            },
+          });
+          await worker.$transaction(
+            (tx) => processPhotoEvent(tx, organizationId, id),
+            { timeout: 25000 },
+          );
+          const outcome = await owner.photoProcessing.findUniqueOrThrow({
+            where: { revisionId: id },
+          });
+          assert.equal(outcome.status, width === 2500 ? 'ready' : 'rejected');
+          if (width === 2499)
+            assert.equal(outcome.errorCode, 'DIMENSIONS_NOT_ALLOWED');
+          assert.equal(await context(organizationId, id, id), null);
+          assert.deepEqual(
+            await photoFile(actor, registered.id, id, true),
+            bytes,
+          );
+        }
+        const synthesis = await createEntry(actor, registered.id, {
+          sectionCode: 'I',
+          title: 'Synthesis',
+        });
+        const png = await sharp({
+          create: {
+            width: 2500,
+            height: 1000,
+            channels: 3,
+            background: '#777777',
+          },
+        })
+          .png()
+          .toBuffer();
+        const id = randomUUID();
+        await uploadPhoto(actor, registered.id, synthesis.id, 1, id, png);
+        await worker.$transaction(
+          (tx) => processPhotoEvent(tx, organizationId, id),
+          { timeout: 25000 },
+        );
+        assert.equal(
+          (
+            await owner.photoProcessing.findUniqueOrThrow({
+              where: { revisionId: id },
+            })
+          ).status,
+          'ready',
+        );
+        assert.deepEqual(
+          (
+            await owner.photoRevision.findUniqueOrThrow({
+              where: { id: revisionId },
+            })
+          ).rules,
+          config.imageRules,
+        );
+        assert.deepEqual(
+          (
+            await owner.registration.findUniqueOrThrow({
+              where: { id: registered.id },
+            })
+          ).configurationSnapshot,
+          frozen.configurationSnapshot,
+        );
+      },
+    );
+    await t.test(
       'archival blocks writes but the participant retains access to originals',
       async () => {
         await transitionEdition(actor, organizationId, contest.id, edition.id, {
@@ -417,7 +711,8 @@ test('participant photos preserve originals, isolate ownership and process immut
       },
     );
   } finally {
-    const where = { organizationId };
+    const organizationIds = [organizationId, otherOrganizationId];
+    const where = { organizationId: { in: organizationIds } };
     await owner.outboxEvent.deleteMany({ where });
     await owner.photoProcessing.deleteMany({ where });
     await owner.photoRevision.deleteMany({ where });
@@ -431,7 +726,9 @@ test('participant photos preserve originals, isolate ownership and process immut
     await owner.edition.deleteMany({ where });
     await owner.contest.deleteMany({ where });
     await owner.organizationMembership.deleteMany({ where });
-    await owner.organization.deleteMany({ where: { id: organizationId } });
+    await owner.organization.deleteMany({
+      where: { id: { in: organizationIds } },
+    });
     await owner.person.deleteMany({
       where: { userId: { in: [userId, otherId] } },
     });
@@ -442,6 +739,10 @@ test('participant photos preserve originals, isolate ownership and process immut
       runtime.$disconnect(),
     ]);
     await rm(resolve(mediaRoot(), organizationId), {
+      recursive: true,
+      force: true,
+    });
+    await rm(resolve(mediaRoot(), otherOrganizationId), {
       recursive: true,
       force: true,
     });

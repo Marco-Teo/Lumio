@@ -9,6 +9,7 @@ import { ownRegistration, type ParticipantActor } from '../participants';
 import { AccessError } from '../authorization';
 import { CompetitionError } from '../competitions';
 import { editionSchema } from '../../lib/competitions';
+import { sectionPhotoRules } from '../../lib/fiaf-photo-policy';
 
 const revisionSelect = {
   id: true,
@@ -234,12 +235,13 @@ export async function uploadPhoto(
         'La posizione supera il numero di fotografie consentito per questa opera.',
       );
     const format = originalFormat(bytes);
-    if (!format || !config.imageRules.formats.includes(format))
+    const rules = sectionPhotoRules(config, entry.sectionCode);
+    if (!format || !rules.formats.includes(format))
       throw new CompetitionError(
         400,
-        `Formato non consentito. Usa: ${config.imageRules.formats.join(', ')}.`,
+        `Formato non consentito. Usa: ${rules.formats.join(', ')}.`,
       );
-    if (bytes.length > config.imageRules.maxBytes)
+    if (bytes.length > rules.maxBytes)
       throw new CompetitionError(
         400,
         'Il file supera la dimensione massima prevista dal regolamento.',

@@ -91,3 +91,17 @@ Il caricamento multiplo usa richieste individuali limitate a due trasferimenti c
 ## Trascinamento e titoli delle fotografie
 
 La selezione multipla viene preparata nel browser prima dell’upload: titoli individuali richiesti per tutte le nuove foto oppure un nome comune con numerazione. Le sezioni single restano opere distinte; i portfolio conservano un solo contenitore. La migrazione 13 aggiunge Photo.title nullable (max 200 caratteri) come metadato logico modificabile dal proprietario durante la finestra aperta: non modifica PhotoRevision o i byte originali. La sostituzione mantiene il titolo, salvo una nuova scelta esplicita. Il titolo non viene copiato nei derivati o nei job. Rimozione foto e opera aggiornano la vista e la coda browser; le righe originali/revisioni restano conservate. Drag/drop accetta file dal dispositivo, senza scaricare URL o percorrere cartelle ricorsivamente.
+
+## Policy fotografica FIAF per sezione
+
+Il risolutore puro `@lumio/media/photo-policy` è condiviso da browser, upload e
+worker. L'ID della policy ordinaria 2027 è distinto dal profilo; il JSON revisionato
+la associa al profilo esatto e usa la classificazione per codice locale.
+Le regole effettive non cambiano i campi globali. Il worker combina le regole
+globali di PhotoRevision con il contesto normativo dello snapshot immutabile
+dell'iscrizione, proiettato da `photo_policy_context` per il solo job pending.
+Nessun lookup dell'edizione corrente o rivalutazione dello storico senza policy.
+Migrazione 14 prima del nuovo worker; nessun cambiamento a Prisma o ai trigger.
+Il nuovo worker deve sostituire tutte le vecchie istanze prima del nuovo web:
+quelle precedenti ignorano la policy nello snapshot e applicano solo le regole
+globali. Sequenza e limiti di rollback sono descritti in DEPLOYMENT.md.

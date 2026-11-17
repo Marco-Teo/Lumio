@@ -14,6 +14,68 @@ const image = () =>
   sharp({
     create: { width: 80, height: 60, channels: 3, background: '#c89946' },
   });
+it('checks exact long edge without resizing originals and preserves legacy processing', async () => {
+  for (const [width, height] of [
+    [2500, 1200],
+    [1200, 2500],
+    [2499, 1200],
+    [2501, 1200],
+  ]) {
+    const original = await sharp({
+      create: { width, height, channels: 3, background: '#c89946' },
+    })
+      .jpeg()
+      .withMetadata({ exif: { IFD0: { Artist: 'Synthetic author' } } })
+      .toBuffer();
+    const copy = Buffer.from(original);
+    const exact = {
+      ...rules,
+      validationVersion: 1 as const,
+      exactLongEdge: 2500,
+      colorProfile: 'srgb' as const,
+    };
+    if (Math.max(width, height) === 2500) {
+      const result = await processPhoto(original, exact);
+      expect([result.width, result.height]).toEqual([width, height]);
+      expect(
+        (await sharp(result.preview).metadata()).width,
+      ).toBeLessThanOrEqual(1600);
+    } else
+      await expect(processPhoto(original, exact)).rejects.toThrow(
+        'DIMENSIONS_NOT_ALLOWED',
+      );
+    await expect(processPhoto(original, rules)).resolves.toMatchObject({
+      width,
+      height,
+    });
+    expect(original).toEqual(copy);
+  }
+});
+it('recognizes Unicode sRGB descriptions only in the new validation version and rejects a different profile', async () => {
+  const srgb = await image().jpeg().withMetadata().toBuffer();
+  await expect(
+    processPhoto(srgb, {
+      ...rules,
+      colorProfile: 'srgb',
+      validationVersion: 1,
+    }),
+  ).resolves.toMatchObject({ format: 'jpeg' });
+  await expect(
+    processPhoto(srgb, { ...rules, colorProfile: 'srgb' }),
+  ).rejects.toThrow('COLOR_PROFILE_NOT_ALLOWED');
+  const p3 = await image().jpeg().withIccProfile('p3').toBuffer();
+  await expect(
+    processPhoto(p3, { ...rules, colorProfile: 'srgb', validationVersion: 1 }),
+  ).rejects.toThrow('COLOR_PROFILE_NOT_ALLOWED');
+  const untagged = await image().jpeg().toBuffer();
+  await expect(
+    processPhoto(untagged, {
+      ...rules,
+      colorProfile: 'srgb',
+      validationVersion: 1,
+    }),
+  ).resolves.toMatchObject({ format: 'jpeg' });
+});
 it('creates a preview without EXIF or ICC and preserves the exact original bytes', async () => {
   const original = await image()
     .jpeg()

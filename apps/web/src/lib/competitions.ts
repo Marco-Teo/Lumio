@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { getRegulatoryProfile } from './regulatory-profiles';
 import { fiafPublicationIssues } from './fiaf-publication';
 import {
+  regulatoryPhotoPolicySchema,
+  supportedPhotoPolicy,
+} from './fiaf-photo-policy';
+import {
   regulatorySectionsSchema,
   fiaf2027SectionClassificationSchema,
 } from './fiaf-classification';
@@ -75,6 +79,7 @@ export const editionSchema = z
       .strict()
       .optional(),
     regulatorySections: regulatorySectionsSchema.optional(),
+    regulatoryPhotoPolicy: regulatoryPhotoPolicySchema.optional(),
     description: z.string().trim().max(5000),
     opensAt: optionalDate,
     closesAt: optionalDate,
@@ -181,6 +186,13 @@ export const editionSchema = z
 
 // Preserve historical reads; current constraints apply only to draft writes/publication.
 export const editionWriteSchema = editionSchema.superRefine((edition, ctx) => {
+  if (edition.regulatoryPhotoPolicy && !supportedPhotoPolicy(edition))
+    ctx.addIssue({
+      code: 'custom',
+      path: ['regulatoryPhotoPolicy'],
+      message:
+        'La policy fotografica deve essere disponibile e riferita al profilo FIAF selezionato.',
+    });
   const mapping = edition.regulatorySections;
   if (mapping) {
     const profile = getRegulatoryProfile(mapping.profileId);

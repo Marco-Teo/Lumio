@@ -114,8 +114,10 @@ completa e controlla tipo/intervallo Portfolio e impostazioni JPEG/sRGB DIG quan
 associati al profilo. Si applica anche alle bozze esistenti, senza cambiare edizioni
 pubblicate o snapshot. Nessun preset applicato automaticamente o riconoscimento FIAF.
 La Raccomandazione non eredita automaticamente gli obblighi sui temi del Patrocinio.
-Dimensioni esatte, deroghe, verifiche documentali e contenuto delle opere restano
-parziali o manuali: [matrice di copertura e limiti](FIAF-2027.md).
+La policy fotografica ordinaria versionata, da confermare prima della pubblicazione,
+applica JPEG/sRGB a DIG e lato maggiore esatto di 2.500 px a DIG/IS per Patrocinio.
+Non modifica snapshot precedenti o concorsi indipendenti. Deroga internazionale,
+verifiche documentali e contenuto delle opere restano non supportati o manuali: [matrice di copertura e limiti](FIAF-2027.md).
 
 Dopo l'accettazione dell'invito, attivare l'autenticatore e aprire **Account → Le tue organizzazioni → nome organizzazione**. La Console Lumio resta dedicata al provisioning: un Super Admin senza membership non gestisce i concorsi dell'organizzazione.
 
@@ -149,7 +151,7 @@ Home ed Esplora presentano i concorsi reali in scadenza e una guida in tre passi
 
 Da **Le mie iscrizioni → Apri bozza → Le tue opere**, scegliere una sezione e creare l’opera. Una fotografia singola contiene un’immagine; un portfolio rispetta min/max della sezione. È possibile trascinare una o più immagini dalla cartella nei riquadri dedicati, oppure selezionarle dal dispositivo. Nei portfolio occupano le posizioni libere della stessa opera; nelle sezioni singole **Carica più fotografie** crea un’opera per file. Prima del caricamento multiplo si sceglie **Un titolo per ogni foto** (tutti obbligatori) oppure **Nome comune e foto numerate**: nel portfolio basta il nome del gruppo e le foto sono numerate; nelle sezioni singole i titoli diventano “Nome — Foto 1”, “Nome — Foto 2”. La coda trasferisce al massimo due file contemporaneamente e mostra progresso ed errori individuali; **Riprova file non riusciti** conserva gli upload riusciti, senza duplicare opere o revisioni. Se la selezione supera i posti disponibili viene rifiutata prima dell’upload, senza scartare file silenziosamente. L’esito del trasferimento è distinto dai controlli fotografici del worker. Il cestino accanto al titolo rimuove l’intera opera con tutte le sue schede; rimuovere una foto fa sparire soltanto la relativa scheda. La cancellazione resta logica e conserva originali e revisioni. È possibile correggere titoli e sostituire immagini: ogni sostituzione aggiunge una revisione senza modificare gli originali precedenti.
 
-Sono accettati JPEG/PNG/TIFF se consentiti dal regolamento. Limiti operativi iniziali: 25 MB per file (o il limite più restrittivo dell’edizione), 40 megapixel, una sola pagina/fotogramma, 100 opere, 20 revisioni per fotografia e 1 GB complessivo per iscrizione. Le anteprime WebP sono generate dal worker e prive di EXIF/GPS/ICC. L’originale conserva esattamente i byte ricevuti. Gli errori di formato/dimensioni/leggibilità/profilo sono mostrati nella bozza; una revisione rifiutata non cancella quella precedente.
+Sono accettati JPEG/PNG/TIFF se consentiti dal regolamento. Limiti operativi iniziali: 25 MiB per file (o il limite più restrittivo dell’edizione), 40 megapixel, una sola pagina/fotogramma, 100 opere, 20 revisioni per fotografia e 1 GB complessivo per iscrizione. Le anteprime WebP sono generate dal worker e prive di EXIF/GPS/ICC. L’originale conserva esattamente i byte ricevuti. Gli errori di formato/dimensioni/leggibilità/profilo sono mostrati nella bozza; una revisione rifiutata non cancella quella precedente.
 
 **Storage locale:** `.data/media`, fuori da `public` e ignorato da Git. Web e worker devono usare lo stesso disco. I test usano esclusivamente `.data/media-test` e ignorano eventuale `MEDIA_ROOT` di sviluppo/produzione. Servono PostgreSQL, Redis e worker accesi; senza worker l’originale è salvato e l’anteprima rimane in attesa. Nessun nuovo servizio cloud. Prima del rilascio su servizi separati è necessario uno storage privato condiviso: il Blueprint Render esistente non è pronto per i file F3.
 

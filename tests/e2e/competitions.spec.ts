@@ -536,10 +536,37 @@ test('organizer configures, versions, publishes and archives an edition', async 
     await first.getByLabel('Minimo immagini per opera').fill('8');
     await first.getByLabel('Massimo immagini per opera').fill('12');
     await page
+      .getByLabel('Conferma policy fotografica ordinaria FIAF 2027')
+      .check();
+    await expect(
+      page.getByText('Modifiche non salvate', { exact: true }),
+    ).toBeVisible();
+    await page
       .getByLabel('Profilo colore', { exact: true })
       .selectOption('srgb');
     await page.getByRole('button', { name: 'Salva bozza' }).click();
     await expect(page.getByRole('status')).toContainText('Bozza salvata');
+    await page.getByRole('button', { name: 'Configura edizione' }).click();
+    const policy = page.getByLabel(
+      'Conferma policy fotografica ordinaria FIAF 2027',
+    );
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await expect(policy).toBeChecked();
+      await policy.focus();
+      await expect(policy).toBeFocused();
+      await policy.press('Space');
+      await expect(policy).not.toBeChecked();
+      await policy.press('Space');
+      await expect(policy).toBeChecked();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true);
+    }
+    await page.getByRole('button', { name: 'Chiudi configurazione' }).click();
+    await page.setViewportSize({ width: 1280, height: 900 });
     await page.getByRole('button', { name: 'Pubblica edizione' }).click();
     await expect(page.getByRole('status')).toContainText('Edizione pubblicata');
     const savedEdition = await owner.edition.findFirstOrThrow({
@@ -574,8 +601,11 @@ test('organizer configures, versions, publishes and archives an edition', async 
     await expect(
       publicPage.getByRole('heading', { name: 'Edizione 2027', exact: true }),
     ).toBeVisible();
+    const publicRules = publicPage.getByText(/Formati: JPEG\. Massimo 25 MiB/);
+    await expect(publicRules).toHaveCount(2);
+    for (const row of await publicRules.all()) await expect(row).toBeVisible();
     await expect(
-      publicPage.getByText(/Dimensione massima: 25 MiB/),
+      publicPage.getByText(/Lato maggiore esatto: 2.500 px/),
     ).toBeVisible();
     await publicPage.close();
     await expect(

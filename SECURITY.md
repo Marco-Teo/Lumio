@@ -88,3 +88,22 @@ Le anteprime di bozza usano l'endpoint amministrativo protetto. La lettura pubbl
 Le API di opere e file richiedono sessione verificata e proprietà dell’iscrizione; per le mutazioni verificano Origin e intervallo temporale con lock condivisi su organizzazione/edizione. Nessuna autorizzazione tramite solo ID opaco. RLS e FK composite proteggono ogni tabella media; nessun permesso file ad admin/giuria in questa fase. Il worker non ottiene SELECT sulle persone: imposta tenant e revisionId per il singolo job. Originali non serviti da directory pubblica; endpoint privati no-store, download attachment/octet-stream per originali e nosniff/CSP restrittiva. Nome originale non conservato, metadati personali non copiati nei log o negli esiti.
 
 Limiti per file/decoder/quota e concorrenza (2 upload per utente, 8 globali, 30/minuto per utente) evitano upload illimitati sulla singola replica. Prima di scalare il limiter deve diventare condiviso. Il controllo di formato non è una scansione antivirus: soltanto i derivati decodificati vengono visualizzati; l’originale resta privato. Il processo server deve poter accedere allo storage condiviso, non al repository pubblico. In produzione `MEDIA_ROOT` assoluto è obbligatorio; volume e backup devono essere cifrati/configurati dall’operatore. Anonimizzazione qui significa derivati privi di EXIF/GPS/ICC e chiavi opache, non rimozione di firme o dati impressi nei pixel. Viste e autorizzazioni della giuria restano future.
+
+## Capability fotografica FIAF
+
+La migrazione 14 consente al worker soltanto l'esecuzione di
+`photo_policy_context(text)`: proiezione normativa della revisione pending nel
+contesto tenant/revisionId del job, senza accesso diretto a iscrizioni o opere.
+Contesto mancante, tenant diverso, altro revisionId o elaborazione terminata
+non restituiscono dati. Le credenziali worker restano fidate come per le policy
+RLS media esistenti: il contesto GUC è stabilito dal processore del job.
+Un chiamante in possesso delle credenziali `lumio_worker` può impostare entrambi
+i GUC e selezionare un'altra revisione pending, anche di un altro tenant:
+la funzione non autentica l'assegnazione BullMQ e non isola worker compromessi.
+Il confine è il processo worker fidato, che ricava tenant/revisione dalla riga
+outbox bloccata, non da parametri HTTP. App e PUBLIC non possono eseguire la
+funzione; il contesto incoerente o assente non espone dati. Questo limite è
+verificato dai test e non va descritto come un'autorizzazione indipendente dai GUC.
+Regole per sezione derivate esclusivamente da snapshot immutabili e ID versionati;
+policy sconosciute non producono un fallback permissivo nell'elaborazione.
+Originali e metadati non vengono trasformati. I limiti tecnici restano invariati.

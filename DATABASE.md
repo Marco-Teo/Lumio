@@ -74,3 +74,19 @@ La migrazione 10 aggiunge `closing_edition_catalog()`: capability pubblica limit
 Entry, Photo, PhotoRevision e PhotoProcessing sono entità distinte con FK composite tenant/iscrizione. Entry punta al codice sezione nello snapshot immutabile dell’iscrizione; Photo ha posizione e puntatore numerico alla revisione corrente. Originali e righe PhotoRevision sono append-only per app e worker. Il proprietario può modificare titolo/attività e sostituire logicamente le fotografie solo durante la finestra aperta. Le revisioni hanno sequenza crescente, limiti e SHA-256. PhotoProcessing nasce pending; solo il worker del job può passare a ready/rejected/failed. L’outbox photo.process contiene solo revisionId e non è leggibile dai partecipanti. I limiti di quota e sequenza sono applicati anche da trigger; i file restano fuori da PostgreSQL.
 
 La migrazione 13 aggiunge il titolo facoltativo della fotografia, vincolato a 1–200 caratteri se presente. Il ruolo applicativo riceve solo UPDATE della nuova colonna; le policy di proprietà/finestra e i vincoli dei genitori restano invariati. L’assenza del titolo produce la dicitura Foto N nel portfolio. Il titolo è metadato dell’entità Photo e non appartiene alla revisione immutabile del file.
+
+## Migrazione 14 — contesto normativo fotografico
+
+`photo_policy_context(text)` è una funzione STABLE SECURITY DEFINER con
+search_path fissato ed EXECUTE revocato a PUBLIC e concesso solo a lumio_worker
+(oltre al proprietario). Richiede tenant e revisionId del contesto transazionale
+uguali alla revisione richiesta e stato pending. Un join con FK/tenant proietta
+soltanto codice sezione, profilo, policy e classificazione pertinente dallo snapshot
+immutabile dell'iscrizione. Nessun nome, contatto, documento o dato personale.
+Nessun nuovo SELECT sulle tabelle per il worker, colonna o riscrittura di dati.
+Il trigger continua a imporre PhotoRevision.rules = snapshot.imageRules.
+La policy effettiva è risolta in TypeScript, non duplicata in SQL.
+L'assegnazione del job è garantita dal processore fidato, non dalla funzione:
+con credenziali worker un chiamante può scegliere GUC coerenti per qualunque
+revisione pending. Il test con due tenant reali distingue questo confine dal
+rifiuto di un identificativo non corrispondente al contesto transazionale.

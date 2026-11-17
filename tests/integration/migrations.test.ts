@@ -46,6 +46,39 @@ test('migrations apply from empty database with separate runtime role', async ()
       },
     );
     assert.equal(result.status, 0, 'Migration failed on fresh database');
+    const capability = await schemaOwner.query(`
+      SELECT pg_get_userbyid(p.proowner) AS owner, p.prosecdef, p.provolatile, p.proconfig,
+        has_function_privilege('lumio_worker',p.oid,'EXECUTE') AS worker_execute,
+        has_function_privilege('lumio_app',p.oid,'EXECUTE') AS app_execute,
+        EXISTS(SELECT 1 FROM aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
+          WHERE acl.grantee=0 AND acl.privilege_type='EXECUTE') AS public_execute
+      FROM pg_proc p WHERE p.oid='public.photo_policy_context(text)'::regprocedure
+    `);
+    assert.deepEqual(capability.rows, [
+      {
+        owner: 'lumio_migrator',
+        prosecdef: true,
+        provolatile: 's',
+        proconfig: ['search_path=pg_catalog, public'],
+        worker_execute: true,
+        app_execute: false,
+        public_execute: false,
+      },
+    ]);
+    const privileges = await schemaOwner.query(`SELECT
+      has_table_privilege('lumio_worker','public.registration','SELECT') AS registration,
+      has_table_privilege('lumio_worker','public.entry','SELECT') AS entry,
+      has_table_privilege('lumio_worker','public.person','SELECT') AS person,
+      has_schema_privilege('lumio_worker','public','CREATE') AS schema_create
+    `);
+    assert.deepEqual(privileges.rows, [
+      {
+        registration: false,
+        entry: false,
+        person: false,
+        schema_create: false,
+      },
+    ]);
     const runtimeUrl = new URL(process.env.DATABASE_URL);
     runtimeUrl.pathname = `/${name}`;
     const runtime = new Client({ connectionString: runtimeUrl.toString() });

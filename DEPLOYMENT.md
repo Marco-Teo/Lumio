@@ -68,3 +68,38 @@ Gli errori transitori di storage seguono cinque tentativi della coda. Errori fot
 ## Upgrade titoli e interazione foto
 
 Applicare anche `202611020013_photo_titles` e rigenerare il client prima di aggiornare il web. Nessuna nuova variabile ambiente, dipendenza o risorsa. I titoli esistenti delle opere restano invariati; le fotografie precedenti hanno titolo nullo e vengono mostrate con la loro posizione. Trascinamento, preparazione dei nomi e icona cestino non cambiano la conservazione degli originali.
+
+## Upgrade policy fotografica FIAF 2027
+
+La migrazione `202611170014_photo_policy_context` è additiva: crea soltanto la
+funzione di lettura normativa per il worker. Non modifica colonne, originali,
+snapshot, regole globali o trigger delle revisioni. Il vecchio worker non conosce
+la policy e potrebbe accettare file incompatibili se resta attivo dopo il nuovo
+web. Non fare un rollout misto dei due worker dopo l'attivazione della policy.
+
+1. Conservare backup coerenti e artefatti/versioni del rilascio; sospendere
+   temporaneamente pubblicazioni e caricamenti durante il passaggio.
+2. Applicare la migrazione con il ruolo migrator sul database autorizzato.
+   Verificare proprietario `lumio_migrator`, `SECURITY DEFINER`, search_path
+   fissato ed EXECUTE solo a worker/proprietario, senza SELECT aggiuntivi.
+3. Arrestare con shutdown ordinato tutte le vecchie istanze worker e attendere
+   i job in corso. Con il nuovo web ancora non attivo, avviare soltanto i nuovi
+   worker, con lo stesso storage privato e lo stesso database.
+4. Verificare la versione effettiva di ogni worker e la funzione SQL, oltre a
+   `/health`: il controllo di salute corrente verifica DB/Redis ma non certifica
+   la versione del validatore o la presenza della capability. Prima del rilascio,
+   provare su staging un file valido e uno incompatibile, più una revisione legacy.
+5. Distribuire il nuovo web e verificare conferma, salvataggio, riapertura e
+   pubblicazione della policy. Riabilitare pubblicazioni e caricamenti e
+   monitorare gli esiti dei job. Nessuna rivalutazione automatica dello storico.
+
+Se il worker parte prima della migrazione, i job fotografici possono fallire ed
+esaurire i retry: correggere la distribuzione prima di riaprire i caricamenti.
+Non azzerare gli stati o sovrascrivere revisioni per il recupero.
+
+Rollback: prima che sia salvata qualsiasi configurazione con la nuova policy è
+possibile tornare ai binari precedenti lasciando la funzione additiva installata.
+Dopo il primo salvataggio, il vecchio web con schema strict non legge il nuovo
+campo; dopo la pubblicazione, il vecchio worker ignorerebbe la policy. Sospendere
+le operazioni interessate e usare un fix compatibile con gli snapshot esistenti:
+non rimuovere il campo, non riscrivere snapshot e non tornare al decoder precedente.

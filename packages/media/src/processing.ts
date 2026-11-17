@@ -1,18 +1,7 @@
 import sharp from 'sharp';
 import { maxPhotoPixels } from './limits';
-import { z } from 'zod';
-export const imageRulesSchema = z
-  .object({
-    formats: z.array(z.enum(['jpeg', 'png', 'tiff'])),
-    maxBytes: z.number().positive(),
-    minWidth: z.number().nullable(),
-    minHeight: z.number().nullable(),
-    maxLongEdge: z.number().nullable(),
-    maxShortEdge: z.number().nullable(),
-    colorProfile: z.enum(['any', 'srgb']),
-  })
-  .strict();
-export type ImageRules = z.infer<typeof imageRulesSchema>;
+import { imageRulesSchema, type ImageRules } from './photo-policy';
+export { imageRulesSchema, type ImageRules };
 export class InvalidPhoto extends Error {
   constructor(public code: string) {
     super(code);
@@ -50,6 +39,8 @@ export async function processPhoto(bytes: Uint8Array, rules: ImageRules) {
     const width = swapped ? metadata.height : metadata.width,
       height = swapped ? metadata.width : metadata.height;
     if (
+      (rules.exactLongEdge &&
+        Math.max(width, height) !== rules.exactLongEdge) ||
       (rules.minWidth && width < rules.minWidth) ||
       (rules.minHeight && height < rules.minHeight) ||
       (rules.maxLongEdge && Math.max(width, height) > rules.maxLongEdge) ||
@@ -62,7 +53,13 @@ export async function processPhoto(bytes: Uint8Array, rules: ImageRules) {
       rules.colorProfile === 'srgb' &&
       ((metadata.space !== 'srgb' && metadata.space !== 'rgb') ||
         (metadata.icc &&
-          !metadata.icc.toString('latin1').toLowerCase().includes('srgb')))
+          !(
+            rules.validationVersion === 1
+              ? metadata.icc.toString('latin1').replaceAll('\0', '')
+              : metadata.icc.toString('latin1')
+          )
+            .toLowerCase()
+            .includes('srgb')))
     )
       throw new InvalidPhoto('COLOR_PROFILE_NOT_ALLOWED');
     const preview = await image

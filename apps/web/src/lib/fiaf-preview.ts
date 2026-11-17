@@ -2,6 +2,7 @@ import type {
   EditionConfiguration,
   SectionConfiguration,
 } from './competitions';
+import { sectionPhotoRules, supportedPhotoPolicy } from './fiaf-photo-policy';
 import {
   fiaf2027SectionClassificationSchema,
   type SectionClassification,
@@ -236,6 +237,22 @@ export function previewFiafEdition(config: EditionConfiguration): FiafPreview {
         case 'dig-file-format': {
           config.sections.forEach((section, index) => {
             if (classification(section)?.sectionType !== 'DIG') return;
+            if (supportedPhotoPolicy(config)) {
+              const effective = sectionPhotoRules(config, section.code);
+              add(
+                rule,
+                effective.formats.length ? 'satisfied' : 'correction',
+                effective.formats.length
+                  ? 'La policy ordinaria richiede JPEG/sRGB per questa sezione. Estensione, contenuto e casi ICC restano da verificare.'
+                  : 'Consenti JPEG nelle regole immagini: nessun formato configurato è compatibile con DIG.',
+                {
+                  sectionIndex: index,
+                  title: 'Impostazioni JPEG/sRGB per DIG',
+                  fieldPath: 'imageRules.formats',
+                },
+              );
+              return;
+            }
             const correct =
               config.imageRules.formats.length === 1 &&
               config.imageRules.formats[0] === requirement.format &&
@@ -268,7 +285,9 @@ export function previewFiafEdition(config: EditionConfiguration): FiafPreview {
             const type = classification(section)?.sectionType;
             if (!requirement.sections.some((candidate) => candidate === type))
               return;
-            const rules = config.imageRules;
+            const rules = supportedPhotoPolicy(config)
+              ? sectionPhotoRules(config, section.code)
+              : config.imageRules;
             const impossible =
               (rules.maxLongEdge !== null &&
                 rules.maxLongEdge < requirement.pixels) ||
@@ -288,10 +307,16 @@ export function previewFiafEdition(config: EditionConfiguration): FiafPreview {
             });
             add(
               rule,
-              impossible ? 'correction' : 'manual',
+              impossible
+                ? 'correction'
+                : 'exactLongEdge' in rules
+                  ? 'satisfied'
+                  : 'manual',
               impossible
                 ? `Le dimensioni configurate escludono il lato maggiore ordinario di ${requirement.pixels} pixel. Correggi le impostazioni o verifica documentalmente l’eventuale deroga internazionale, che non è presunta concessa.`
-                : `Il regolamento richiede un lato maggiore esatto di ${requirement.pixels} pixel. Un massimo, anche di ${requirement.pixels} pixel, non prova la dimensione esatta. Le regole sono globali; serve una verifica dedicata dei file e dell’eventuale deroga.`,
+                : 'exactLongEdge' in rules
+                  ? 'La policy ordinaria controlla il lato maggiore esatto di 2.500 px sui nuovi caricamenti. La deroga internazionale non è supportata.'
+                  : `Il regolamento richiede un lato maggiore esatto di ${requirement.pixels} pixel. Un massimo, anche di ${requirement.pixels} pixel, non prova la dimensione esatta. Le regole sono globali; serve una verifica dedicata dei file e dell’eventuale deroga.`,
               {
                 sectionIndex: index,
                 title: 'Lato maggiore esatto',

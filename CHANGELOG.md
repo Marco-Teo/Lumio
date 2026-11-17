@@ -2,6 +2,28 @@
 
 Questo registro descrive il lavoro fino a F3 locale e gli incrementi FIAF 2027. Le funzionalità future sono indicate separatamente.
 
+## FIAF 2027 — policy fotografica ordinaria per sezione
+
+Policy esplicita e versionata negli snapshot: Patrocinio DIG JPEG/sRGB, DIG/IS
+lato maggiore esatto di 2.500 px. Bozze incomplete salvabili; conferma e compatibilità
+richieste prima di pubblicare anche bozze precedenti. Nessuna estensione implicita
+a Portfolio o Raccomandazione, nessuna modifica agli indipendenti o allo storico.
+Risolutore browser-safe condiviso fra interfacce, upload e worker. Migrazione 14
+aggiunge solo una capability normativa di lettura per il job, senza nuovi SELECT,
+colonne o riscritture. Rimane il trigger delle regole globali in PhotoRevision.
+Deroga internazionale e interpretazioni aperte restano esplicitamente rinviate.
+
+Verifiche locali: lint, formatting check, typecheck, 190 test unitari,
+57 test di integrazione e 10 E2E superati, incluse tastiera e larghezze
+320/390 px. Build riuscita. Migrazione applicata solo a `lumio_test` e verificata
+anche su database temporaneo vuoto; nessun aggiornamento del database ordinario.
+
+La revisione aggiunge verifiche degli ACL della funzione, isolamento con due
+tenant reali e compatibilità di una revisione FIAF storica senza policy. Chiariti
+il confine fidato dei GUC worker e la sequenza migrazione → sostituzione completa
+dei worker → nuovo web, con limiti di rollback dopo il primo salvataggio.
+Nessuna modifica alla migrazione o al comportamento applicativo durante la review.
+
 ## Sicurezza Next.js — 17 novembre 2026
 
 Aggiornamento mirato **16.4.2 → 16.4.5**, minima patch corretta per

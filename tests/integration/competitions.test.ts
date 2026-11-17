@@ -19,6 +19,7 @@ import {
   organizationMemberships,
 } from '../../apps/web/src/server/competitions';
 import { emptyEdition } from '../../apps/web/src/lib/competitions';
+import { fiafPhotoPolicyId } from '../../apps/web/src/lib/fiaf-photo-policy';
 import { regulatoryCatalog } from '../../apps/web/src/lib/regulatory-profiles';
 
 if (!process.env.MIGRATION_DATABASE_URL || !process.env.WORKER_DATABASE_URL)
@@ -639,6 +640,10 @@ test('competition lifecycle, tenant isolation and immutable revisions', async (t
         assert.deepEqual(await read(), before);
         const corrected = {
           ...winningConfiguration,
+          regulatoryPhotoPolicy: {
+            id: fiafPhotoPolicyId,
+            profileId: profile.id,
+          },
           sections: winningConfiguration.sections.map((section) => ({
             ...section,
             minImages: 8,

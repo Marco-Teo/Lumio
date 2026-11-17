@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { sectionPhotoRulesLabel } from '../../../lib/fiaf-photo-policy';
 import { effectivePhotoBytes, photoSizeLabel } from '@lumio/media/limits';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
@@ -62,14 +63,19 @@ export default async function EditionPage({
                 ? ` · ${(section.feeCents / 100).toFixed(2)} ${config.currency}`
                 : ' · Gratuita'}
               <p>{section.description}</p>
+              {config.regulatoryPhotoPolicy && (
+                <p>{sectionPhotoRulesLabel(config, section.code)}</p>
+              )}
             </li>
           ))}
         </ul>
-        <p>
-          Formati: {config.imageRules.formats.join(', ').toUpperCase()}.
-          Dimensione massima:{' '}
-          {photoSizeLabel(effectivePhotoBytes(config.imageRules.maxBytes))}.
-        </p>
+        {!config.regulatoryPhotoPolicy && (
+          <p>
+            Formati: {config.imageRules.formats.join(', ').toUpperCase()}.
+            Dimensione massima:{' '}
+            {photoSizeLabel(effectivePhotoBytes(config.imageRules.maxBytes))}.
+          </p>
+        )}
       </section>
       <section>
         <h2>Regolamento</h2>

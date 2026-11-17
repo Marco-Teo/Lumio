@@ -93,6 +93,10 @@ test('participant profile and registration ownership across tenants', async (t) 
   const config = {
     ...emptyEdition('Edizione aperta', 'edizione-aperta', '2026'),
     regulatoryProfile: { id: regulatoryCatalog.profiles[0].id },
+    regulatoryPhotoPolicy: {
+      id: 'fiaf-2027-ordinary-photo-v1',
+      profileId: regulatoryCatalog.profiles[0].id,
+    },
     imageRules: {
       ...emptyEdition('Edizione', 'edizione', '2027').imageRules,
       colorProfile: 'srgb' as const,

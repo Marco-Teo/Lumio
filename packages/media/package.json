@@ -6,7 +6,8 @@
   "exports": {
     "./storage": "./src/storage.ts",
     "./processing": "./src/processing.ts",
-    "./limits": "./src/limits.ts"
+    "./limits": "./src/limits.ts",
+    "./photo-policy": "./src/photo-policy.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
