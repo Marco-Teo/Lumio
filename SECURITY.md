@@ -1,5 +1,20 @@
 # Sicurezza
 
+## Patch Next.js — 17 novembre 2026
+
+Next.js è fissato a **16.4.5**, prima patch della linea 16.4 che corregge
+[GHSA-mfr8-8qww-v76h / CVE-2026-119790](https://github.com/vercel/next.js/security/advisories/GHSA-mfr8-8qww-v76h).
+L'advisory riguarda le versioni da 16.3.0 a 16.4.4: una race nella combinazione
+di funzioni `use cache` e `unstable_cache()` può riutilizzare dati tra parametri
+diversi della root. Tale combinazione non è presente nel codice applicativo
+esaminato; l'aggiornamento elimina comunque la versione affetta.
+
+React e React DOM restano a 19.3.1. Si aggiornano soltanto Next e i suoi pacchetti
+versionati `@next/env`/`@next/swc-*`; nessun override, disattivazione dei controlli
+o modifica alla configurazione di cache, autenticazione, autorizzazioni o FIAF.
+Il controllo specifico non equivale a un audit globale privo di vulnerabilità:
+gli advisory preesistenti di altri strumenti vanno valutati separatamente.
+
 ## Controlli FIAF alla pubblicazione
 
 La checklist frontend è informativa rispetto all'autorizzazione: la pubblicazione

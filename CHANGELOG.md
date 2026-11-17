@@ -2,6 +2,23 @@
 
 Questo registro descrive il lavoro fino a F3 locale e gli incrementi FIAF 2027. Le funzionalità future sono indicate separatamente.
 
+## Sicurezza Next.js — 17 novembre 2026
+
+Aggiornamento mirato **16.4.2 → 16.4.5**, minima patch corretta per
+[GHSA-mfr8-8qww-v76h / CVE-2026-119790](https://github.com/vercel/next.js/security/advisories/GHSA-mfr8-8qww-v76h),
+identificato nell'audit npm come causa della segnalazione precedente.
+Manifest e lockfile aggiornati soltanto per Next, `@next/env`, binari SWC associati
+e riferimenti peer al nuovo Next. React/React DOM 19.3.1, Better Auth e tutte le
+altre dipendenze dirette restano invariati. Nessun cambiamento al codice FIAF,
+alle sessioni, ai permessi, ai media, al database o ai file ambiente.
+
+Verifiche locali: installazione frozen/offline, lint, formatting check, typecheck,
+177 test unitari, 55 integrazioni, 10 E2E e `pnpm build` superati. Login, sessioni,
+MFA, flusso organizzatore e pubblicazione FIAF restano coperti dalle suite esistenti.
+Build riuscita al primo tentativo senza il precedente avviso di vulnerabilità.
+L'audit npm non rileva più advisory Next.js; restano sei advisory preesistenti
+nelle catene di fast-uri, minimatch e picomatch, non aggiornate in questo intervento.
+
 ## FIAF 2027 — catalogo, configurazione e controlli di pubblicazione
 
 I commit `03a50da`, `cd9fa88`, `45a6e96` e `1d1bf3a` introducono catalogo immutabile
